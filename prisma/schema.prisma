@@ -14,13 +14,13 @@ datasource db {
 
 model User {
   // Firebase Authentication の uid を保存する
-  id          String   @id
-  email       String   @unique
-  displayName String?
-  photoUrl    String?
-  posts       Post[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id
+  email     String   @unique
+  name      String
+  photoUrl  String?
+  posts     Post[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Post {

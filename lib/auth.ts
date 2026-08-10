@@ -3,6 +3,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
+  createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import { app } from './firebase';
 
@@ -27,5 +28,20 @@ export const handleLogout = async () => {
   } catch (error) {
     console.error(error);
     return { error: 'サインアウトがキャンセルされました。' };
+  }
+};
+
+export const handleSignup = async (email: string, password: string) => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password,
+    );
+    const user = userCredential.user;
+    return { user, error: null };
+  } catch (error) {
+    console.error(error);
+    return { user: null, error: 'signupに失敗しました。' };
   }
 };
