@@ -1,6 +1,6 @@
 'use client';
 
-import { auth, handleLogin } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -58,7 +58,7 @@ const Header = () => {
       ) : (
         <div
           className="flex items-center justify-center gap-2 border p-2 rounded-sm border-zinc-200"
-          onClick={handleLogin}
+          // onClick={}
         >
           <FcGoogle className="size-5" />
           <p>Google Login</p>

@@ -1,4 +1,5 @@
 import { handleSignupAction } from '@/lib/actions';
+import { FcGoogle } from 'react-icons/fc';
 
 const SingUpPage = async () => {
   return (
@@ -155,7 +156,7 @@ const SingUpPage = async () => {
               type="submit"
               className="w-full rounded-[10px] bg-compass-blue py-3 text-[14.5px] font-bold text-white transition bg-[#254f8f] hover:opacity-70"
             >
-              ログイン
+              新規登録
             </button>
           </form>
 
@@ -167,16 +168,10 @@ const SingUpPage = async () => {
 
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-2.5 rounded-[10px] border border-compass-border bg-white py-2.5 text-[13.5px] font-semibold text-compass-ink transition hover:bg-compass-bg"
+            className="flex w-full items-center justify-center gap-2.5 rounded-[10px] border border-compass-border bg-white py-2.5 text-[13.5px] font-semibold text-compass-ink transition hover:opacity-70"
           >
-            <span
-              className="h-4 w-4 rounded"
-              style={{
-                background:
-                  'conic-gradient(#2B5FA8 0deg 120deg, #2E9E6D 120deg 240deg, #E8792B 240deg 360deg)',
-              }}
-            />
-            会社アカウントで続ける（SSO）
+            <FcGoogle className="size-5" />
+            Google Singup
           </button>
 
           <div className="mt-7 flex gap-2 rounded-[10px] bg-compass-bg p-3.5 text-xs text-compass-muted">

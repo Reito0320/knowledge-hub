@@ -4,16 +4,18 @@ import {
   GoogleAuthProvider,
   signOut,
   createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { app } from './firebase';
 
 const provider = new GoogleAuthProvider();
 export const auth = getAuth(app);
 
-export const handleLogin = async () => {
+export const handleGoogleLogin = async () => {
   try {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
+
     return { user };
   } catch (error) {
     console.error(error);
@@ -43,5 +45,20 @@ export const handleSignup = async (email: string, password: string) => {
   } catch (error) {
     console.error(error);
     return { user: null, error: 'signupに失敗しました。' };
+  }
+};
+
+export const handleSignin = async (email: string, password: string) => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password,
+    );
+    const user = userCredential.user;
+    return { user, error: null };
+  } catch (error) {
+    console.error(error);
+    return { user: null, error: 'loginに失敗しました。' };
   }
 };

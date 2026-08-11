@@ -1,28 +1,34 @@
 import { redirect } from 'next/navigation';
-import { handleSignup } from './auth';
+import { handleSignin, handleSignup } from './auth';
 import { prisma } from './prisma';
 import { createSession } from './session';
 
 export const handleLoginAction = async (formData: FormData) => {
   'use server';
-  const email = formData.get('mail') as string;
+
+  const email = formData.get('email') as string;
   const password = formData.get('password') as string;
 
   if (!email || !password) return;
 
-  const user = await prisma.user.findUnique({
+  const { user, error } = await handleSignin(email, password);
+
+  if (!user) {
+    console.error(error);
+    return;
+  }
+
+  const res = await prisma.user.findUnique({
     where: {
       email,
     },
     select: {
       id: true,
-      passwordHash: true,
     },
   });
 
-  if (!user) return;
-
-  await createSession(String(user?.id));
+  await createSession(String(res?.id));
+  redirect('/');
 };
 
 export const handleSignupAction = async (formData: FormData) => {
