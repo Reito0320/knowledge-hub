@@ -1,7 +1,41 @@
-import { handleSignupAction } from '@/lib/actions';
+'use client';
+
+import { signUp } from 'aws-amplify/auth';
+import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 
-const SingUpPage = async () => {
+const SingUpPage = () => {
+  const router = useRouter();
+
+  const handleConfirm = async (e: React.SubmitEvent<HTMLFormElement>) => {
+    // formアクションの際にデフォルトでリロードされるのを防ぐ
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    try {
+      await signUp({
+        username: email,
+        password,
+        options: {
+          userAttributes: {
+            email,
+            name,
+          },
+        },
+      });
+
+      sessionStorage.setItem('signupEmail', email);
+
+      router.push(`/confirm?email=${encodeURIComponent(email)}`);
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  };
   return (
     <main className="grid min-h-screen grid-cols-1 md:grid-cols-2 font-inter text-compass-ink bg-compass-bg">
       {/* Left: brand / security panel */}
@@ -86,7 +120,7 @@ const SingUpPage = async () => {
             社内専用アカウントを作成します
           </p>
 
-          <form action={handleSignupAction}>
+          <form onSubmit={(e) => handleConfirm(e)}>
             <div className="mb-4">
               <label
                 htmlFor="name"
@@ -130,8 +164,12 @@ const SingUpPage = async () => {
                 type="password"
                 name="password"
                 placeholder="••••••••••"
+                minLength={8}
                 className="w-full rounded-[10px] border border-compass-border bg-white px-3.5 py-2.5 text-sm outline-none"
               />
+              <span className="text-gray-400 text-sm">
+                8文字以上・大文字・小文字・数字・記号を含めてください
+              </span>
             </div>
 
             <div className="mb-6 flex items-center justify-between text-[13px]">
@@ -185,3 +223,36 @@ const SingUpPage = async () => {
 };
 
 export default SingUpPage;
+
+/* Object
+isSignUpComplete
+: 
+false
+nextStep
+: 
+codeDeliveryDetails
+: 
+attributeName
+: 
+"email"
+deliveryMedium
+: 
+"EMAIL"
+destination
+: 
+"r***@c***"
+[[Prototype]]
+: 
+Object
+signUpStep
+: 
+"CONFIRM_SIGN_UP"
+[[Prototype]]
+: 
+Object
+userId
+: 
+"9754ca98-90d1-703f-9d79-d27781b43d88"
+[[Prototype]]
+: 
+Object */
