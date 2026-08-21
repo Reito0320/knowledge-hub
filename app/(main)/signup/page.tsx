@@ -1,8 +1,8 @@
 'use client';
 
-import { signUp } from 'aws-amplify/auth';
 import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
+import { handleSignup } from './signup';
 
 const SingUpPage = () => {
   const router = useRouter();
@@ -16,25 +16,10 @@ const SingUpPage = () => {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    try {
-      await signUp({
-        username: email,
-        password,
-        options: {
-          userAttributes: {
-            email,
-            name,
-          },
-        },
-      });
+    const signup = await handleSignup(name, email, password);
+    if (!signup) return;
 
-      sessionStorage.setItem('signupEmail', email);
-
-      router.push(`/confirm?email=${encodeURIComponent(email)}`);
-    } catch (error) {
-      console.error(error);
-      return;
-    }
+    router.push(`/confirm?email=${encodeURIComponent(email)}`);
   };
   return (
     <main className="grid min-h-screen grid-cols-1 md:grid-cols-2 font-inter text-compass-ink bg-compass-bg">
