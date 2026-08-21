@@ -4,7 +4,7 @@ import { confirmSignUp, resendSignUpCode } from 'aws-amplify/auth';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
-import { getEmail, getErrorMessage } from './confirm';
+import { cognitoConfirm, getEmail, getErrorMessage } from './confirm';
 
 const ConfirmForm = () => {
   const router = useRouter();
@@ -30,11 +30,7 @@ const ConfirmForm = () => {
     setIsConfirming(true);
 
     try {
-      const result = await confirmSignUp({
-        username: email,
-        confirmationCode: code.trim(),
-      });
-
+      const result = await cognitoConfirm(email, code);
       if (result.isSignUpComplete) {
         sessionStorage.removeItem('signupEmail');
         router.replace('/login?confirmed=1');
