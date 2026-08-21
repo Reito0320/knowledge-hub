@@ -1,7 +1,7 @@
 'use client';
 
 import { FcGoogle } from 'react-icons/fc';
-import { handleSignIn } from './login';
+import { handleLogin } from './login';
 import { useRouter } from 'next/navigation';
 
 const LoginPage = () => {
@@ -93,8 +93,9 @@ const LoginPage = () => {
 
           <form
             onSubmit={async (e) => {
-              handleSignIn(e);
-              router.push('/');
+              handleLogin(e);
+              router.replace('/');
+              router.refresh();
             }}
           >
             <div className="mb-4">

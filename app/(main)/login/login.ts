@@ -1,6 +1,7 @@
-import { signIn } from 'aws-amplify/auth';
+import { fetchPostCreateSession } from '@/app/api/auth/session/fetch';
+import { fetchAuthSession, signIn } from 'aws-amplify/auth';
 
-export const handleSignIn = async (e: React.SubmitEvent<HTMLFormElement>) => {
+export const handleLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
   try {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -8,11 +9,19 @@ export const handleSignIn = async (e: React.SubmitEvent<HTMLFormElement>) => {
     const password = formData.get('password') as string;
 
     const { isSignedIn, nextStep } = await signIn({ username, password });
-    console.log('isSignedIn', isSignedIn);
-    console.log('nextStep', nextStep);
 
     // 1. 通常のログイン成功
     if (isSignedIn) return;
+
+    /* これでcognito側で発行したtokenを確認できる */
+    const authSession = await fetchAuthSession();
+    const accessToken = authSession.tokens?.accessToken?.toString();
+
+    if (!accessToken) throw new Error('access tokenを取得できません');
+
+    /* ここでtokenの認証を行うための通信を実行 */
+    const result = await fetchPostCreateSession(`Bearer ${accessToken}`);
+    console.log('result', result);
 
     // 2. 追加の認証ステップが必要な場合（条件分岐）
     switch (nextStep.signInStep) {

@@ -1,12 +1,28 @@
 'use client';
 
+import { signOut } from 'aws-amplify/auth';
 import Image from 'next/image';
 import Link from 'next/link';
-import { FcGoogle } from 'react-icons/fc';
+import { useRouter } from 'next/navigation';
+import { FiLogOut } from 'react-icons/fi';
+import { fetchDeleteSession } from '../api/auth/session/fetch';
 
 const Header = () => {
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      await fetchDeleteSession();
+      router.replace('/login');
+      router.refresh();
+    } catch (error) {
+      console.error('サインアウトに失敗しました:', error);
+    }
+  };
+
   return (
-    <header className="flex items-center justify-between p-3 h-15 w-full border-b-2 border-zinc-200 ">
+    <header className="flex h-15 w-full items-center justify-between border-b-2 border-zinc-200 p-3">
       <Link href={'/'}>
         <Image
           src={'/compass-logo-full.png'}
@@ -26,10 +42,9 @@ const Header = () => {
         />
       </div>
 
-      <div className="flex items-center justify-center rounded-full h-10 w-10 bg-gray-200"></div>
+      <div className="flex items-center justify-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200"></div>
 
-      <div className="flex items-center justify-center gap-2">
-        <span className="text-gray-500"></span>
         {/* <Image
             src={user.photoURL!}
             alt="userImg"
@@ -37,6 +52,17 @@ const Header = () => {
             width={40}
             height={40}
           /> */}
+
+        <div className="flex flex-col items-end gap-1">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-gray-600 transition hover:border-[#254f8f]/30 hover:bg-[#254f8f]/5 hover:text-[#254f8f]"
+          >
+            <FiLogOut aria-hidden="true" className="size-4" />
+            サインアウト
+          </button>
+        </div>
       </div>
     </header>
   );

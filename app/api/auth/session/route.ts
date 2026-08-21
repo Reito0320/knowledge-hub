@@ -1,4 +1,5 @@
 import { verifyCognitoAccessToken } from '@/lib/amplify/cognito-verify-access-token';
+import { deleteCookie } from '@/lib/cookie';
 import { prisma } from '@/lib/prisma';
 import { createSession } from '@/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
@@ -49,5 +50,20 @@ export const POST = async (req: NextRequest) => {
       { message: '認証に失敗しました。' },
       { status: 401 },
     );
+  }
+};
+
+export const DELETE = async () => {
+  try {
+    /* sessionを削除する通信 */
+    await deleteCookie('session');
+    return NextResponse.json({
+      message: 'sessionの削除を実施しました。',
+    });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({
+      message: 'sessionの削除ができませんでした。',
+    });
   }
 };
