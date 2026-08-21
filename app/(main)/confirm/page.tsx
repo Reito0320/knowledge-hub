@@ -4,25 +4,7 @@ import { confirmSignUp, resendSignUpCode } from 'aws-amplify/auth';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
-
-const getErrorMessage = (error: unknown) => {
-  if (!(error instanceof Error)) {
-    return '確認処理に失敗しました。もう一度お試しください。';
-  }
-
-  switch (error.name) {
-    case 'CodeMismatchException':
-      return '確認コードが正しくありません。';
-    case 'ExpiredCodeException':
-      return '確認コードの有効期限が切れています。コードを再送してください。';
-    case 'LimitExceededException':
-      return '試行回数の上限に達しました。しばらく待ってからお試しください。';
-    case 'UserNotFoundException':
-      return '登録情報が見つかりません。新規登録からやり直してください。';
-    default:
-      return '確認処理に失敗しました。もう一度お試しください。';
-  }
-};
+import { getEmail, getErrorMessage } from './confirm';
 
 const ConfirmForm = () => {
   const router = useRouter();
@@ -33,26 +15,15 @@ const ConfirmForm = () => {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
-  const getEmail = () => {
-    const emailFromQuery = searchParams.get('email');
-
-    if (emailFromQuery) return emailFromQuery;
-    if (typeof window === 'undefined') return '';
-
-    return sessionStorage.getItem('signupEmail') ?? '';
-  };
-
   const handleConfirm = async (event: React.ChangeEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const param = searchParams.get('email');
+    const email = getEmail(param);
 
-    const email = getEmail();
-
-    if (!email) {
-      setError(
+    if (!email)
+      return setError(
         'メールアドレスが見つかりません。新規登録からやり直してください。',
       );
-      return;
-    }
 
     setError('');
     setNotice('');
@@ -80,14 +51,13 @@ const ConfirmForm = () => {
   };
 
   const handleResend = async () => {
-    const email = getEmail();
+    const param = searchParams.get('email');
+    const email = getEmail(param);
 
-    if (!email) {
-      setError(
+    if (!email)
+      return setError(
         'メールアドレスが見つかりません。新規登録からやり直してください。',
       );
-      return;
-    }
 
     setError('');
     setNotice('');
