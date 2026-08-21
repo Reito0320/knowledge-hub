@@ -1,6 +1,6 @@
 'use client';
 
-import '@/lib/amplify';
+import '@/lib/amplify/cognito';
 
 const AmplifyProvider = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
