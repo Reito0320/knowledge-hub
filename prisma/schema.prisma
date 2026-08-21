@@ -13,7 +13,6 @@ datasource db {
 }
 
 model User {
-  // Firebase Authentication の uid を保存する
   id        String   @id
   email     String   @unique
   name      String
