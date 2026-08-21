@@ -45,3 +45,6 @@ next-env.d.ts
 
 .claude
 .windsurf
+
+# local Notion reference
+/AWS_FREE_TIER_DEVELOPMENT.local.md

@@ -1,13 +1,16 @@
 'use client';
 
-import { signUp } from 'aws-amplify/auth';
 import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
+import { handleSignup } from './signup';
+import { useState } from 'react';
 
 const SingUpPage = () => {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleConfirm = async (e: React.SubmitEvent<HTMLFormElement>) => {
+    setIsLoading(true);
     // formアクションの際にデフォルトでリロードされるのを防ぐ
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -16,25 +19,11 @@ const SingUpPage = () => {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    try {
-      await signUp({
-        username: email,
-        password,
-        options: {
-          userAttributes: {
-            email,
-            name,
-          },
-        },
-      });
-
-      sessionStorage.setItem('signupEmail', email);
-
-      router.push(`/confirm?email=${encodeURIComponent(email)}`);
-    } catch (error) {
-      console.error(error);
-      return;
-    }
+    const signup = await handleSignup(name, email, password);
+    if (!signup) return;
+    setIsLoading(false);
+    window.alert(`${email} 当てに送られている認証コードを確認してください。`);
+    router.push(`/confirm?email=${encodeURIComponent(email)}`);
   };
   return (
     <main className="grid min-h-screen grid-cols-1 md:grid-cols-2 font-inter text-compass-ink bg-compass-bg">
@@ -192,9 +181,10 @@ const SingUpPage = () => {
 
             <button
               type="submit"
-              className="w-full rounded-[10px] bg-compass-blue py-3 text-[14.5px] font-bold text-white transition bg-[#254f8f] hover:opacity-70"
+              disabled={isLoading}
+              className={`w-full rounded-[10px] bg-compass-blue py-3 text-[14.5px] font-bold text-white transition hover:opacity-70 ${isLoading ? 'bg-gray-500' : 'bg-[#254f8f]'}`}
             >
-              新規登録
+              {isLoading ? 'Loading' : '新規登録'}
             </button>
           </form>
 
