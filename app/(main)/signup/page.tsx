@@ -1,7 +1,30 @@
-import { handleSignupAction } from '@/lib/actions';
-import { FcGoogle } from 'react-icons/fc';
+'use client';
 
-const SingUpPage = async () => {
+import { useRouter } from 'next/navigation';
+import { FcGoogle } from 'react-icons/fc';
+import { handleSignup } from './signup';
+import { useState } from 'react';
+
+const SingUpPage = () => {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const handleConfirm = async (e: React.SubmitEvent<HTMLFormElement>) => {
+    setIsLoading(true);
+    // formアクションの際にデフォルトでリロードされるのを防ぐ
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    const signup = await handleSignup(name, email, password);
+    if (!signup) return;
+    setIsLoading(false);
+    window.alert(`${email} 当てに送られている認証コードを確認してください。`);
+    router.push('/confirm');
+  };
   return (
     <main className="grid min-h-screen grid-cols-1 md:grid-cols-2 font-inter text-compass-ink bg-compass-bg">
       {/* Left: brand / security panel */}
@@ -86,7 +109,7 @@ const SingUpPage = async () => {
             社内専用アカウントを作成します
           </p>
 
-          <form action={handleSignupAction}>
+          <form onSubmit={(e) => handleConfirm(e)}>
             <div className="mb-4">
               <label
                 htmlFor="name"
@@ -130,8 +153,12 @@ const SingUpPage = async () => {
                 type="password"
                 name="password"
                 placeholder="••••••••••"
+                minLength={8}
                 className="w-full rounded-[10px] border border-compass-border bg-white px-3.5 py-2.5 text-sm outline-none"
               />
+              <span className="text-gray-400 text-sm">
+                8文字以上・大文字・小文字・数字・記号を含めてください
+              </span>
             </div>
 
             <div className="mb-6 flex items-center justify-between text-[13px]">
@@ -154,9 +181,10 @@ const SingUpPage = async () => {
 
             <button
               type="submit"
-              className="w-full rounded-[10px] bg-compass-blue py-3 text-[14.5px] font-bold text-white transition bg-[#254f8f] hover:opacity-70"
+              disabled={isLoading}
+              className={`w-full rounded-[10px] bg-compass-blue py-3 text-[14.5px] font-bold text-white transition hover:opacity-70 ${isLoading ? 'bg-gray-500' : 'bg-[#254f8f]'}`}
             >
-              新規登録
+              {isLoading ? 'Loading' : '新規登録'}
             </button>
           </form>
 
@@ -185,3 +213,36 @@ const SingUpPage = async () => {
 };
 
 export default SingUpPage;
+
+/* Object
+isSignUpComplete
+: 
+false
+nextStep
+: 
+codeDeliveryDetails
+: 
+attributeName
+: 
+"email"
+deliveryMedium
+: 
+"EMAIL"
+destination
+: 
+"r***@c***"
+[[Prototype]]
+: 
+Object
+signUpStep
+: 
+"CONFIRM_SIGN_UP"
+[[Prototype]]
+: 
+Object
+userId
+: 
+"9754ca98-90d1-703f-9d79-d27781b43d88"
+[[Prototype]]
+: 
+Object */

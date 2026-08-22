@@ -1,11 +1,16 @@
-import { handleLoginAction } from '@/lib/actions';
-import { FcGoogle } from 'react-icons/fc';
+'use client';
 
-const LoginPage = async () => {
+import { FcGoogle } from 'react-icons/fc';
+import { handleLogin } from './login';
+import { useRouter } from 'next/navigation';
+
+const LoginPage = () => {
+  const router = useRouter();
+
   return (
     <main className="grid min-h-screen grid-cols-1 md:grid-cols-2 font-inter text-compass-ink bg-compass-bg">
-      {/* Left: brand / security panel */}
-      <section className="relative hidden md:flex flex-col justify-between overflow-hidden bg-gradient-to-br from-[#1E3A5F] via-[#234A78] to-compass-blue p-14 text-white">
+      <section className="relative hidden md:flex flex-col justify-between overflow-hidden bg-linear-to-br from-[#1E3A5F] via-[#234A78] to-compass-blue p-14 text-white">
+        {/* Left: brand / security panel */}
         <div className="flex items-center gap-2.5 font-sora text-lg font-extrabold"></div>
 
         <div className="mt-10 max-w-sm">
@@ -86,7 +91,18 @@ const LoginPage = async () => {
             作成した社内専用アカウントにログインします
           </p>
 
-          <form action={handleLoginAction}>
+          <form
+            onSubmit={async (e) => {
+              try {
+                await handleLogin(e);
+              } catch (error) {
+                console.error(error);
+                return;
+              }
+              router.replace('/');
+              router.refresh();
+            }}
+          >
             <div className="mb-4">
               <label
                 htmlFor="email"
