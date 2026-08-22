@@ -6,7 +6,7 @@ export const handleSignup = async (
   password: string,
 ): Promise<boolean> => {
   try {
-    const signupRes = await signUp({
+    await signUp({
       username: email,
       password,
       options: {
@@ -16,8 +16,6 @@ export const handleSignup = async (
         },
       },
     });
-    console.log('signupRes', signupRes);
-    /* ここのsignupResでDBにメール認証の状態をpendingでuserを作成する */
 
     sessionStorage.setItem('signupEmail', email);
     return true;
