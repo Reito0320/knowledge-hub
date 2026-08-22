@@ -16,7 +16,7 @@ const ConfirmForm = () => {
 
   const handleConfirm = async (event: React.ChangeEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const email = sessionStorage.getItem('email');
+    const email = sessionStorage.getItem('signupEmail');
 
     if (!email)
       return setError(
@@ -45,7 +45,7 @@ const ConfirmForm = () => {
   };
 
   const handleResend = async () => {
-    const email = sessionStorage.getItem('email');
+    const email = sessionStorage.getItem('signupEmail');
 
     if (!email)
       return setError(
