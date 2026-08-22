@@ -23,7 +23,7 @@ const SingUpPage = () => {
     if (!signup) return;
     setIsLoading(false);
     window.alert(`${email} 当てに送られている認証コードを確認してください。`);
-    router.push(`/confirm?email=${encodeURIComponent(email)}`);
+    router.push('/confirm');
   };
   return (
     <main className="grid min-h-screen grid-cols-1 md:grid-cols-2 font-inter text-compass-ink bg-compass-bg">

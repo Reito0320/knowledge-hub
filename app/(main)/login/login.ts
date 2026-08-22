@@ -10,8 +10,7 @@ export const handleLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
 
     const { isSignedIn, nextStep } = await signIn({ username, password });
 
-    // 1. 通常のログイン成功
-    if (isSignedIn) return;
+    if (!isSignedIn) return;
 
     /* これでcognito側で発行したtokenを確認できる */
     const authSession = await fetchAuthSession();
@@ -20,8 +19,8 @@ export const handleLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
     if (!accessToken) throw new Error('access tokenを取得できません');
 
     /* ここでtokenの認証を行うための通信を実行 */
-    const result = await fetchPostCreateSession(`Bearer ${accessToken}`);
-    console.log('result', result);
+    const { message } = await fetchPostCreateSession(`Bearer ${accessToken}`);
+    console.log(message);
 
     // 2. 追加の認証ステップが必要な場合（条件分岐）
     switch (nextStep.signInStep) {

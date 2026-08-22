@@ -1,14 +1,13 @@
 'use client';
 
-import { confirmSignUp, resendSignUpCode } from 'aws-amplify/auth';
+import { resendSignUpCode } from 'aws-amplify/auth';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
-import { cognitoConfirm, getEmail, getErrorMessage } from './confirm';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { cognitoConfirm, getErrorMessage } from './confirm';
 
 const ConfirmForm = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -17,8 +16,7 @@ const ConfirmForm = () => {
 
   const handleConfirm = async (event: React.ChangeEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const param = searchParams.get('email');
-    const email = getEmail(param);
+    const email = sessionStorage.getItem('email');
 
     if (!email)
       return setError(
@@ -47,8 +45,7 @@ const ConfirmForm = () => {
   };
 
   const handleResend = async () => {
-    const param = searchParams.get('email');
-    const email = getEmail(param);
+    const email = sessionStorage.getItem('email');
 
     if (!email)
       return setError(
@@ -162,7 +159,7 @@ const ConfirmForm = () => {
 const ConfirmPage = () => {
   return (
     <main className="grid min-h-screen grid-cols-1 bg-compass-bg font-inter text-compass-ink md:grid-cols-2">
-      <section className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-[#1E3A5F] via-[#234A78] to-compass-blue p-14 text-white md:flex">
+      <section className="relative hidden flex-col justify-between overflow-hidden bg-linear-to-br from-[#1E3A5F] via-[#234A78] to-compass-blue p-14 text-white md:flex">
         <div className="flex items-center gap-2.5 font-sora text-lg font-extrabold" />
 
         <div className="mt-10 max-w-sm">
@@ -233,13 +230,7 @@ const ConfirmPage = () => {
       </section>
 
       <section className="flex items-center justify-center bg-gray-50 p-10">
-        <Suspense
-          fallback={
-            <div className="text-sm text-compass-muted">読み込み中...</div>
-          }
-        >
-          <ConfirmForm />
-        </Suspense>
+        <ConfirmForm />
       </section>
     </main>
   );

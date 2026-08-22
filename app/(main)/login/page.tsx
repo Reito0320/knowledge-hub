@@ -93,7 +93,12 @@ const LoginPage = () => {
 
           <form
             onSubmit={async (e) => {
-              handleLogin(e);
+              try {
+                await handleLogin(e);
+              } catch (error) {
+                console.error(error);
+                return;
+              }
               router.replace('/');
               router.refresh();
             }}

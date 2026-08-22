@@ -1,12 +1,5 @@
 import { confirmSignUp } from 'aws-amplify/auth';
 
-export const getEmail = (searchParams: string | null) => {
-  if (searchParams) return searchParams;
-  if (typeof window === 'undefined') return '';
-
-  return sessionStorage.getItem('signupEmail') ?? '';
-};
-
 export const getErrorMessage = (error: unknown) => {
   if (!(error instanceof Error)) {
     return '確認処理に失敗しました。もう一度お試しください。';

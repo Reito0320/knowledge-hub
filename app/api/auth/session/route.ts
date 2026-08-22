@@ -1,4 +1,5 @@
 import { verifyCognitoAccessToken } from '@/lib/amplify/cognito-verify-access-token';
+import { getCognitoUser } from '@/lib/amplify/get-cognito-user';
 import { deleteCookie } from '@/lib/cookie';
 import { prisma } from '@/lib/prisma';
 import { createSession } from '@/lib/session';
@@ -17,32 +18,54 @@ export const POST = async (req: NextRequest) => {
 
     /* headerの中からtokenを切り出す */
     const accessToken = authorization.slice('Bearer '.length);
+    /* tokenの検証をし、正常であればpayloadが発行される */
     const payload = await verifyCognitoAccessToken(accessToken);
 
-    /* cognito認証完了時に発行されるsubをDBのuserIdとして保存している場合に有効 */
-    const user = await prisma.user.findUnique({
-      where: {
-        id: payload.sub,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-      },
-    });
+    /* 検証済みtokenを使い、Cognitoからuser属性を取得 */
+    const cognitoUser = await getCognitoUser(accessToken);
 
-    if (!user)
+    if (!cognitoUser)
       return NextResponse.json(
-        { message: 'userのデータが存在していませんでした。' },
+        { message: 'cognitoUserが取得できませんでした。' },
+        { status: 401 },
+      );
+
+    if (!cognitoUser.sub || cognitoUser.sub !== payload.sub)
+      return NextResponse.json(
+        { message: 'tokenとuser情報が一致していませんでした。' },
+        { status: 401 },
+      );
+
+    if (!cognitoUser.email || !cognitoUser.name || !cognitoUser.emailVerified)
+      return NextResponse.json(
+        { message: '必要なuser属性を確認できませんでした。' },
         { status: 403 },
       );
 
-    /* 自前のsession作成関数を使う */
+    /* 再実行されても重複しないようにuserを作成・更新 */
+    const user = await prisma.user.upsert({
+      where: {
+        id: cognitoUser.sub,
+      },
+      update: {
+        email: cognitoUser.email,
+        name: cognitoUser.name,
+      },
+      create: {
+        id: cognitoUser.sub,
+        email: cognitoUser.email,
+        name: cognitoUser.name,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    /* 自前のsession作成関数を使う。ここでpayload.uidを使わないのは、db経由で発行されたものと明確にするため */
     await createSession(user.id);
 
     return NextResponse.json({
       message: 'ログインしました。',
-      user,
     });
   } catch (error) {
     console.error(error);
