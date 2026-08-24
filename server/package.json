@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "generate": "prisma generate --schema ../prisma/schema.prisma",
+    "generate": "prisma generate --schema ../prisma/schema.prisma --generator serverClient",
     "build": "npm run generate && tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit"
