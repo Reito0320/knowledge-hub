@@ -1,9 +1,11 @@
+/* server側でcognitoのtokenを検証し、cognitoに控えてあるuserの情報を取得するための設定ファイル */
+
 import {
   CognitoIdentityProviderClient,
   GetUserCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
-import { env } from '../config/env.js';
+import { env } from '../config/env.ts';
 
 const region = env.COGNITO_USER_POOL_ID.split('_')[0];
 

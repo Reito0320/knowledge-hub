@@ -1,15 +1,15 @@
 import { Router } from 'express';
-import { getCognitoUser, verifyCognitoAccessToken } from '../lib/cognito.js';
-import { prisma } from '../lib/prisma.js';
-import { createSessionToken } from '../lib/session.js';
-import { env } from '../config/env.js';
+import { getCognitoUser, verifyCognitoAccessToken } from '../lib/cognito.ts';
+import { prisma } from '../lib/prisma.ts';
+import { createSessionToken } from '../lib/session.ts';
+import { env } from '../config/env.ts';
 
 export const sessionRouter = Router();
 
 const cookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
-  sameSite: env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
+  sameSite: 'lax' as const,
   path: '/',
 };
 
