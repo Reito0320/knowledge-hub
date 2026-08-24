@@ -20,8 +20,16 @@ export const getCognitoUser = async (accessToken: string) => {
   if (!result.UserAttributes) return;
   const attributes: Record<string, string> = {};
 
-  result.UserAttributes.forEach(({ Name, Value }) => {
-    if (Name && Value) attributes[Name] = Value;
+  result.UserAttributes.forEach((attribute) => {
+    /* Cognitoから返された属性名と属性値を取り出す */
+    const attributeName = attribute.Name;
+    const attributeValue = attribute.Value;
+
+    /* 属性名または属性値が存在しないデータは保存しない */
+    if (!attributeName || !attributeValue) return;
+
+    /* emailやnameなどの属性名をkeyにして、その値を保存する */
+    attributes[attributeName] = attributeValue;
   });
 
   return {

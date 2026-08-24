@@ -1,30 +1,30 @@
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ?? '';
+
+type SessionResponse = {
+  message: string;
+};
+
 export const fetchPostCreateSession = async (header: string) => {
-  try {
-    const res = await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: {
-        Authorization: header,
-      },
-    });
-    if (!res.ok) throw new Error('sessionを作成するPOSTが失敗しています。');
-    const data = await res.json();
-    return data;
-  } catch (error) {
-    console.error(error);
-    return;
-  }
+  const res = await fetch(`${apiBaseUrl}/api/auth/session`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Authorization: header,
+    },
+  });
+  const data = (await res.json()) as SessionResponse;
+
+  if (!res.ok) throw new Error(data.message);
+
+  return data;
 };
 
 export const fetchDeleteSession = async () => {
-  try {
-    const res = await fetch('/api/auth/session', {
-      method: 'DELETE',
-    });
+  const res = await fetch(`${apiBaseUrl}/api/auth/session`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  const data = (await res.json()) as SessionResponse;
 
-    if (!res.ok) throw new Error('sessionの削除ができませんでした。');
-    return;
-  } catch (error) {
-    console.error(error);
-    return;
-  }
+  if (!res.ok) throw new Error(data.message);
 };

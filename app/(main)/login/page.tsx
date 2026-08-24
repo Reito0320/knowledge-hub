@@ -94,7 +94,9 @@ const LoginPage = () => {
           <form
             onSubmit={async (e) => {
               try {
-                await handleLogin(e);
+                const isLoggedIn = await handleLogin(e);
+
+                if (!isLoggedIn) return;
               } catch (error) {
                 console.error(error);
                 return;
