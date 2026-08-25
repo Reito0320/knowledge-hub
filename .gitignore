@@ -51,8 +51,3 @@ next-env.d.ts
 
 # local Notion reference
 /AWS_FREE_TIER_DEVELOPMENT.local.md
-
-# Express server generated files
-/server/node_modules/
-/server/dist/
-/server/src/generated/prisma/
