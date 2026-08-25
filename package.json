@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "prisma generate --generator client && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1116.0",
