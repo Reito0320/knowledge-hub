@@ -42,6 +42,9 @@ yarn-error.log*
 next-env.d.ts
 
 /lib/generated/prisma
+/server/src/generated/prisma
+/server/node_modules
+/server/dist
 
 .claude
 .windsurf

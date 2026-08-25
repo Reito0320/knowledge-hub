@@ -10,7 +10,7 @@ export const handleLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
 
     const { isSignedIn, nextStep } = await signIn({ username, password });
 
-    if (!isSignedIn) return;
+    if (!isSignedIn) return false;
 
     /* これでcognito側で発行したtokenを確認できる */
     const authSession = await fetchAuthSession();
@@ -35,8 +35,10 @@ export const handleLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
       default:
         console.log('その他のステップ:', nextStep.signInStep);
     }
+
+    return true;
   } catch (error) {
     console.error('ログインに失敗しました:', error);
-    // error.name で 'UserNotConfirmedException' などをキャッチして個別に処理も可能
+    throw error;
   }
 };
