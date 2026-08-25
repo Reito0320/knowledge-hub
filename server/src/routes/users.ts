@@ -1,18 +1,13 @@
 import { Router } from 'express';
-import { verifySessionToken } from '../lib/session.ts';
 import { prisma } from '../lib/prisma.ts';
+import { requireSession } from '../middleware/require-session.ts';
 
 export const usersRouter = Router();
 
-usersRouter.get('/me', async (req, res) => {
+usersRouter.get('/me', requireSession, async (_req, res) => {
   try {
-    /* cookie-parserで取得するcookieは非同期処理じゃないみたい */
-    const session = req.cookies.session;
-    if (!session)
-      return res.status(401).json({
-        message: 'session cookieが見つかりませんでした。',
-      });
-    const userId = await verifySessionToken(session);
+    /* middlewareで検証したuserIdが代入される */
+    const userId = res.locals.userId as string;
     const user = await prisma.user.findUnique({
       where: {
         id: userId,
@@ -34,7 +29,7 @@ usersRouter.get('/me', async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({
-      message: 'session cookieの取得に失敗しました。',
+      message: 'user情報の取得に失敗しました。',
     });
   }
 });

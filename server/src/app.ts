@@ -8,6 +8,7 @@ import { usersRouter } from './routes/users.ts';
 export const buildServer = () => {
   const app = express();
 
+  /* next.js側からの通信を許容するためのmiddleware */
   app.use(
     cors({
       origin: env.CLIENT_ORIGIN,
@@ -15,8 +16,10 @@ export const buildServer = () => {
     }),
   );
   app.use(express.json());
+  /* req.cookiesでcookieを読めるようにするためのmiddleware */
   app.use(cookieParser());
 
+  /* 通信テストのコード */
   app.get('/health', (_, res) => {
     res.json({
       status: 'ok',
