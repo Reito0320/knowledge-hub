@@ -1,9 +1,59 @@
 import { verifyCognitoAccessToken } from '@/lib/amplify/cognito-verify-access-token';
 import { getCognitoUser } from '@/lib/amplify/get-cognito-user';
-import { deleteCookie } from '@/lib/cookie';
+import { deleteCookie, getCookie } from '@/lib/cookie';
+import { decrypt } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { createSession } from '@/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
+
+export const GET = async () => {
+  try {
+    const sessionToken = await getCookie('session');
+
+    if (!sessionToken)
+      return NextResponse.json(
+        { message: 'session cookieがありません。' },
+        { status: 401 },
+      );
+
+    const payload = await decrypt(sessionToken);
+
+    if (!payload || typeof payload.userId !== 'string')
+      return NextResponse.json(
+        { message: 'sessionを確認できませんでした。' },
+        { status: 401 },
+      );
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: payload.userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        photoUrl: true,
+      },
+    });
+
+    if (!user)
+      return NextResponse.json(
+        { message: 'userが存在していませんでした。' },
+        { status: 401 },
+      );
+
+    return NextResponse.json({
+      message: 'sessionを確認しました。',
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { message: 'sessionの検証に失敗しました。' },
+      { status: 401 },
+    );
+  }
+};
 
 export const POST = async (req: NextRequest) => {
   try {
