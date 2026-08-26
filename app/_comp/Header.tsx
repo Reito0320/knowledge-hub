@@ -16,9 +16,10 @@ const Header = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<SessionUser | null>(null);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [hasImageError, setHasImageError] = useState(false);
+  const [searchMember, setSearchMember] = useState<string>('');
+  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
+  const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
+  const [hasImageError, setHasImageError] = useState<boolean>(false);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -38,10 +39,8 @@ const Header = () => {
 
     void checkSession();
   }, [pathname]);
-
   const handleSignOut = async () => {
     setIsSigningOut(true);
-
     try {
       await signOut();
       await fetchDeleteSession();
@@ -54,12 +53,18 @@ const Header = () => {
       setIsSigningOut(false);
     }
   };
+  const handleSearchMemberButton = () => {
+    const trimSearchMember = searchMember.trim();
+    if (!trimSearchMember) return;
+    router.push('/search?member=' + trimSearchMember);
+    setSearchMember('');
+  };
 
   const initials = user?.name.trim().slice(0, 1).toUpperCase() || 'U';
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#DDE4EC] bg-white/95 backdrop-blur">
-      <div className="grid h-16 w-full grid-cols-[1fr_auto] items-center gap-3 px-3 sm:px-4 md:grid-cols-[auto_minmax(0,1fr)_auto] md:gap-3">
+      <div className="grid h-16 w-full grid-cols-[auto_minmax(90px,1fr)_auto] items-center gap-2 px-3 sm:gap-3 sm:px-4">
         <Link
           href="/"
           className="w-fit shrink-0 justify-self-start"
@@ -70,28 +75,35 @@ const Header = () => {
             alt="Knowledge Hub"
             width={150}
             height={50}
-            className="h-auto w-28 sm:w-36"
+            className="h-auto w-24 sm:w-32 lg:w-36"
             loading="eager"
           />
         </Link>
 
-        <div className="relative hidden h-10 w-full max-w-sm justify-self-end md:block">
-          <FiSearch
-            aria-hidden="true"
-            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#7B8899]"
-          />
+        <div className="relative col-start-2 row-start-1 h-9 w-full max-w-xs justify-self-end sm:h-10">
           <label htmlFor="header-search" className="sr-only">
-            記事やメンバーを検索
+            メンバーを検索
           </label>
           <input
             id="header-search"
-            type="text"
-            placeholder="記事やメンバーを検索"
-            className="h-full w-full rounded-xl border border-[#DDE4EC] bg-[#F8FAFC] pl-9 pr-3 text-sm text-[#344256] outline-none transition placeholder:text-[#9AA7B7] focus:border-[#254F8F]/50 focus:ring-2 focus:ring-[#254F8F]/10"
+            type="search"
+            placeholder="メンバー検索"
+            onChange={(e) => setSearchMember(e.target.value)}
+            value={searchMember}
+            className="h-full w-full rounded-xl border border-[#DDE4EC] bg-[#F8FAFC] pl-3 pr-10 text-xs text-[#344256] outline-none transition placeholder:text-[#9AA7B7] focus:border-[#254F8F]/50 focus:ring-2 focus:ring-[#254F8F]/10 sm:pr-20 sm:text-sm"
           />
+          <button
+            type="button"
+            aria-label="メンバーを検索"
+            onClick={handleSearchMemberButton}
+            className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg bg-[#254F8F] text-xs font-bold text-white transition hover:bg-[#1E3A5F] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#254F8F] sm:h-8 sm:w-auto sm:px-3"
+          >
+            <FiSearch aria-hidden="true" className="size-4 sm:hidden" />
+            <span className="hidden sm:inline">検索</span>
+          </button>
         </div>
 
-        <div className="flex shrink-0 items-center justify-self-end gap-2 sm:gap-3">
+        <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end gap-2 sm:gap-3">
           {isCheckingSession ? (
             <div
               className="h-10 w-24 animate-pulse rounded-lg bg-[#EEF2F6]"
