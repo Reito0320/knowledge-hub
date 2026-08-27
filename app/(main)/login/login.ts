@@ -1,40 +1,37 @@
 import { fetchPostCreateSession } from '@/app/api/auth/session/fetch';
 import { fetchAuthSession, signIn } from 'aws-amplify/auth';
 
+/**
+ * イベントを引数にとって,すでに存在しているcognitoのtokenを取得。取得できなかったら未ログインのuserとみなして、login処理をして、cognitoのtokenを発行
+ * @param e
+ * @returns
+ */
 export const handleLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
   try {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const username = formData.get('email') as string;
-    const password = formData.get('password') as string;
+    /* これでcognito側で発行したtokenを取得できる */
+    let authSession = await fetchAuthSession();
+    let accessToken = authSession.tokens?.accessToken?.toString();
 
-    const { isSignedIn, nextStep } = await signIn({ username, password });
+    /* すでにアカウント作成をしているけれどtokenが失効している場合にcognitoのlogin処置が走る */
+    if (!accessToken) {
+      const formData = new FormData(e.currentTarget);
+      const username = formData.get('email') as string;
+      const password = formData.get('password') as string;
 
-    if (!isSignedIn) return false;
+      const { isSignedIn } = await signIn({ username, password });
 
-    /* これでcognito側で発行したtokenを確認できる */
-    const authSession = await fetchAuthSession();
-    const accessToken = authSession.tokens?.accessToken?.toString();
+      if (!isSignedIn) return false;
 
+      authSession = await fetchAuthSession();
+      accessToken = authSession.tokens?.accessToken?.toString();
+    }
+
+    /* 未ログインだったので、再度login処理を実行し、取得しなおしたtokenすらも取得できなかった場合 */
     if (!accessToken) throw new Error('access tokenを取得できません');
 
     /* ここでtokenの認証を行うための通信を実行 */
-    const { message } = await fetchPostCreateSession(`Bearer ${accessToken}`);
-    console.log(message);
-
-    // 2. 追加の認証ステップが必要な場合（条件分岐）
-    switch (nextStep.signInStep) {
-      case 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED':
-        console.log('初回ログインのため、新しいパスワードの設定が必要です。');
-        // パスワード変更画面へ遷移させる
-        break;
-      case 'CONFIRM_SIGN_UP':
-        console.log('サインアップの確認（メール認証）が完了していません。');
-        // 前述の確認コード入力画面へ遷移させる
-        break;
-      default:
-        console.log('その他のステップ:', nextStep.signInStep);
-    }
+    await fetchPostCreateSession(`Bearer ${accessToken}`);
 
     return true;
   } catch (error) {

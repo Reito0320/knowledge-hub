@@ -14,5 +14,10 @@ const verifier = CognitoJwtVerifier.create({
   tokenUse: 'access',
 });
 
+/**
+ * cognitoのtokenを検証し,正常であればpayloadを返す関数
+ * @param token
+ * @returns
+ */
 export const verifyCognitoAccessToken = async (token: string) =>
   verifier.verify(token);

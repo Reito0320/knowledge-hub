@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { FiHeart, FiMessageCircle } from 'react-icons/fi';
 import FirstSection from './_comp/FirstSection';
 import SecondSection from './_comp/SecondSection';
+import { getCurrentUser } from '@/lib/auth/get-current-user';
 
 const latestArticles = [
   {
@@ -39,7 +40,9 @@ const latestArticles = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const result = await getCurrentUser();
+  console.log(result);
   return (
     <main className="min-h-screen bg-[#F5F7FA] text-[#1E2A3A]">
       <FirstSection />

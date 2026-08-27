@@ -1,3 +1,5 @@
+/* 使いまわせるファイル */
+
 import {
   CognitoIdentityProviderClient,
   GetUserCommand,
@@ -10,6 +12,11 @@ if (!region) throw new Error('Cognitoのリージョンを取得できません�
 
 const cognitoClient = new CognitoIdentityProviderClient({ region });
 
+/**
+ * cognitoのtokenを使ってcognito側で登録されているuserのデータを取得して返す関数
+ * @param accessToken
+ * @returns
+ */
 export const getCognitoUser = async (accessToken: string) => {
   const result = await cognitoClient.send(
     new GetUserCommand({
