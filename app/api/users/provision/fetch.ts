@@ -2,7 +2,7 @@ export const fetchPostCreateUser = async (header: string) => {
   const res = await fetch('/api/users/provision', {
     method: 'POST',
     headers: {
-      Authorization: 'Bearer' + header,
+      Authorization: 'Bearer ' + header,
     },
   });
   if (!res.ok)
