@@ -42,8 +42,8 @@ const Header = () => {
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await signOut();
       await fetchDeleteSession();
+      await signOut();
       setUser(null);
       router.replace('/login');
       router.refresh();

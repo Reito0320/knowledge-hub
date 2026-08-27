@@ -129,8 +129,6 @@ const FirstSection = () => {
 
         {/* TODO: useKnowledgeSearchでキーワード・カテゴリ・タグを管理し、検索APIと接続する */}
         <motion.div
-          whileHover={{ y: -5, scale: 1.03 }}
-          transition={{ duration: 0.3 }}
           initial="hidden"
           animate="visible"
           variants={motionContainer.itemVariants}
