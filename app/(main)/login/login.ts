@@ -7,18 +7,17 @@ import { fetchAuthSession, signIn } from 'aws-amplify/auth';
  * @returns
  */
 export const handleLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  const formData = new FormData(e.currentTarget);
+  const username = formData.get('email') as string;
+  const password = formData.get('password') as string;
+
   try {
-    e.preventDefault();
     /* これでcognito側で発行したtokenを取得できる */
     let authSession = await fetchAuthSession();
     let accessToken = authSession.tokens?.accessToken?.toString();
-
     /* すでにアカウント作成をしているけれどtokenが失効している場合にcognitoのlogin処置が走る */
     if (!accessToken) {
-      const formData = new FormData(e.currentTarget);
-      const username = formData.get('email') as string;
-      const password = formData.get('password') as string;
-
       const { isSignedIn } = await signIn({ username, password });
 
       if (!isSignedIn) return false;
