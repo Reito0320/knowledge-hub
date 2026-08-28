@@ -1,7 +1,7 @@
-import { getCurrentUser } from '@/lib/auth/get-current-user';
-import { prisma } from '@/lib/prisma';
+'use client';
+import { fetchGETPostData, type PostListItem } from '@/app/api/post/fetch';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
   FiBookOpen,
   FiClock,
@@ -12,6 +12,9 @@ import {
   FiPlus,
   FiTag,
 } from 'react-icons/fi';
+import { postStatusCounter } from './post';
+import { useRouter } from 'next/navigation';
+import Skeleton from '@/comp/Skeleton';
 
 const statusStyles = {
   DRAFT: {
@@ -40,56 +43,21 @@ const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
 });
 
 // ログインユーザーが投稿した記事だけを表示する管理ページ。
-const PostPage = async () => {
-  const currentUser = await getCurrentUser();
+const PostPage = () => {
+  const router = useRouter();
+  const [posts, setPosts] = useState<PostListItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  useEffect(() => {
+    const getPostList = async () => {
+      setIsLoading(true);
+      const data = await fetchGETPostData();
+      setPosts(data);
+      setIsLoading(false);
+    };
+    void getPostList();
+  }, []);
 
-  if (!currentUser) {
-    redirect('/login');
-  }
-
-  const posts = await prisma.post.findMany({
-    where: {
-      authorId: currentUser.id,
-    },
-    select: {
-      id: true,
-      title: true,
-      excerpt: true,
-      category: true,
-      status: true,
-      viewCount: true,
-      publishedAt: true,
-      updatedAt: true,
-      postTags: {
-        select: {
-          tag: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      },
-      _count: {
-        select: {
-          likes: true,
-          comments: true,
-        },
-      },
-    },
-    orderBy: {
-      updatedAt: 'desc',
-    },
-  });
-
-  const publishedCount = posts.filter(
-    (post) => post.status === 'PUBLISHED',
-  ).length;
-  const draftCount = posts.filter((post) => post.status === 'DRAFT').length;
-  const totalLikes = posts.reduce(
-    (total, post) => total + post._count.likes,
-    0,
-  );
+  const { publishedCount, draftCount, totalLikes } = postStatusCounter(posts);
 
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-[#F5F7FA] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
@@ -136,7 +104,9 @@ const PostPage = async () => {
           ))}
         </section>
 
-        {posts.length === 0 ? (
+        {isLoading ? (
+          <Skeleton />
+        ) : posts.length === 0 ? (
           <section className="mt-7 flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E0] bg-white px-6 text-center">
             <span className="flex size-14 items-center justify-center rounded-2xl bg-[#E8F0FA] text-[#254F8F]">
               <FiEdit3 aria-hidden="true" className="size-6" />
@@ -170,7 +140,8 @@ const PostPage = async () => {
               return (
                 <article
                   key={post.id}
-                  className="group rounded-2xl border border-[#DDE4EC] bg-white p-5 transition hover:border-[#254F8F]/25 hover:shadow-[0_12px_30px_rgba(30,58,95,0.07)] sm:p-6"
+                  onClick={() => router.push('/post/' + post.id)}
+                  className="cursor-pointer group rounded-2xl border border-[#DDE4EC] bg-white p-5 transition hover:border-[#254F8F]/25 hover:shadow-[0_12px_30px_rgba(30,58,95,0.07)] sm:p-6"
                 >
                   <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
@@ -185,7 +156,7 @@ const PostPage = async () => {
                         </span>
                         <span className="flex items-center gap-1 text-xs text-[#98A4B3]">
                           <FiClock aria-hidden="true" />
-                          {dateFormatter.format(post.updatedAt)} 更新
+                          {dateFormatter.format(new Date(post.updatedAt))} 更新
                         </span>
                       </div>
 
@@ -239,7 +210,7 @@ const PostPage = async () => {
                     </span>
                     {post.publishedAt && (
                       <span className="ml-auto">
-                        {dateFormatter.format(post.publishedAt)} 公開
+                        {dateFormatter.format(new Date(post.publishedAt))} 公開
                       </span>
                     )}
                   </div>

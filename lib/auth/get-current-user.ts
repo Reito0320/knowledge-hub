@@ -20,5 +20,5 @@ export const getCurrentUser = async () => {
       id: true,
     },
   });
-  return user;
+  return user?.id;
 };
