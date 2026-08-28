@@ -4,6 +4,7 @@ import {
   fetchGetTargetPost,
   type PostDetailData,
 } from '@/app/api/post/[postId]/fetch';
+import MarkdownRenderer from '@/comp/MarkdownRender';
 import Skeleton from '@/comp/Skeleton';
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
@@ -115,13 +116,15 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
             <FiArrowLeft aria-hidden="true" />
             自分の記事へ戻る
           </Link>
-          <Link
-            href={`/post/edit?postId=${postId}`}
-            className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D8E0E9] bg-white px-4 text-sm font-bold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#EEF4FB] hover:text-[#254F8F]"
-          >
-            <FiEdit3 aria-hidden="true" />
-            編集する
-          </Link>
+          {postData.canEdit && (
+            <Link
+              href={`/post/${postId}/edit`}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D8E0E9] bg-white px-4 text-sm font-bold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#EEF4FB] hover:text-[#254F8F]"
+            >
+              <FiEdit3 aria-hidden="true" />
+              編集する
+            </Link>
+          )}
         </div>
 
         <article className="overflow-hidden rounded-2xl border border-[#DDE4EC] bg-white shadow-[0_14px_38px_rgba(30,58,95,0.06)]">
@@ -172,10 +175,7 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
                 記事本文
               </div>
 
-              {/* TODO: Markdownライブラリ導入後、contentをHTMLへ変換して表示する */}
-              <div className="whitespace-pre-wrap wrap-break-words text-[15px] leading-8 text-[#344256] sm:text-base">
-                {postData.content}
-              </div>
+              <MarkdownRenderer content={postData.content} />
             </div>
 
             <aside className="border-t border-[#E8EDF2] bg-[#FAFBFC] p-5 lg:border-l lg:border-t-0 lg:p-6">
@@ -202,13 +202,6 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
                   </div>
                 </dl>
 
-                <Link
-                  href={`/post/edit?postId=${postId}`}
-                  className="mt-6 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#254F8F] px-4 text-sm font-bold text-white transition hover:bg-[#1E3A5F]"
-                >
-                  <FiEdit3 aria-hidden="true" />
-                  この記事を編集
-                </Link>
               </div>
             </aside>
           </div>

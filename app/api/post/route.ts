@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
-import { createPostTagData } from '../../(main)/post/edit/edit';
+import { createPostTagData } from '@/lib/post/create-post-tag-data';
 import { getCurrentUser } from '@/lib/auth/get-current-user';
 
 export const POST = async (req: NextRequest) => {
@@ -53,7 +53,7 @@ export const POST = async (req: NextRequest) => {
   }
 };
 
-export const GET = async (req: NextRequest) => {
+export const GET = async () => {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser)

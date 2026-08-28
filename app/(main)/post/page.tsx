@@ -83,7 +83,7 @@ const PostPage = () => {
             </p>
           </div>
           <Link
-            href="/post/edit"
+            href="/post/new"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#254F8F] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1E3A5F]"
           >
             <FiPlus aria-hidden="true" />
@@ -125,7 +125,7 @@ const PostPage = () => {
               日々の業務で得た知識や、誰かに共有したい解決方法を最初の記事にしてみましょう。
             </p>
             <Link
-              href="/post/edit"
+              href="/post/new"
               className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#254F8F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1E3A5F]"
             >
               <FiPlus aria-hidden="true" />
@@ -196,7 +196,9 @@ const PostPage = () => {
                     </div>
 
                     <Link
-                      href={`/post/edit?postId=${post.id}`}
+                      href={`/post/${post.id}/edit`}
+                      /* 親からの遷移アクションの伝播を防ぐ */
+                      onClick={(e) => e.stopPropagation()}
                       className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#DDE4EC] px-4 text-sm font-bold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#EEF4FB] hover:text-[#254F8F]"
                     >
                       <FiEdit3 aria-hidden="true" />

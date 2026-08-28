@@ -1,17 +1,27 @@
 'use client';
 
 import { fetchPostCreate } from '@/app/api/post/fetch';
+import { fetchUpdatePost } from '@/app/api/post/[postId]/fetch';
 import { useRouter } from 'next/navigation';
 import { FiArrowLeft, FiEdit3, FiSave, FiSend } from 'react-icons/fi';
 
-const FirstSection = () => {
+type FirstSectionProps = {
+  mode: 'create' | 'edit';
+  postId?: string;
+  storageKey: string;
+};
+
+const FirstSection = ({ mode, postId, storageKey }: FirstSectionProps) => {
   const router = useRouter();
   const handleSavebutton = async () => {
-    const localData = localStorage.getItem('postData');
+    const localData = localStorage.getItem(storageKey);
     const cashData = localData ? JSON.parse(localData) : null;
     if (!cashData) return;
-    /* localStorageに保存してあるデータをDBに保存させる */
-    const message = await fetchPostCreate(cashData);
+
+    const message =
+      mode === 'edit' && postId
+        ? await fetchUpdatePost(postId, cashData)
+        : await fetchPostCreate(cashData);
 
     console.log(message);
   };
@@ -31,10 +41,12 @@ const FirstSection = () => {
           </span>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#1E3A5F] sm:text-3xl">
-              ナレッジを投稿
+              {mode === 'edit' ? 'ナレッジを編集' : 'ナレッジを投稿'}
             </h1>
             <p className="mt-1 text-sm text-[#7B8899]">
-              あなたの経験を、チームみんなの知識に変えましょう。
+              {mode === 'edit'
+                ? '記事の内容を更新して、より役立つナレッジに育てましょう。'
+                : 'あなたの経験を、チームみんなの知識に変えましょう。'}
             </p>
           </div>
         </div>

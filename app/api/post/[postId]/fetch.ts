@@ -7,6 +7,25 @@ export type PostDetailData = {
   viewCount: number;
   publishedAt: string | null;
   updatedAt: string;
+  canEdit: boolean;
+  postTags: Array<{
+    tag: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  }>;
+};
+
+type UpdatePostData = {
+  title: string;
+  excerpt?: string;
+  content: string;
+  category: 'TECH' | 'BUSINESS';
+  tags: Array<
+    | { type: 'existing'; id: string; name: string; slug: string }
+    | { type: 'new'; name: string }
+  >;
 };
 
 type GetTargetPostResponse = {
@@ -22,4 +41,22 @@ export const fetchGetTargetPost = async (
 
   const { targetPost }: GetTargetPostResponse = await res.json();
   return targetPost;
+};
+
+export const fetchUpdatePost = async (
+  postId: string,
+  data: UpdatePostData,
+) => {
+  const res = await fetch('/api/post/' + postId, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) throw new Error('記事更新の通信に失敗しています。');
+
+  const { message }: { message: string } = await res.json();
+  return message;
 };

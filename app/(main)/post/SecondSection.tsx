@@ -8,7 +8,7 @@ type TagSuggestion = {
 };
 
 // 既存タグと、入力欄から新しく追加したタグをtypeで判別する。
-type SelectedTag =
+export type SelectedTag =
   | {
       type: 'existing';
       id: string;
@@ -62,13 +62,30 @@ const existingTags: TagSuggestion[] = [
 const normalizeTagName = (name: string) =>
   name.trim().normalize('NFKC').toLocaleLowerCase();
 
-const SecondSection = () => {
-  const [title, setTitle] = useState<string>('');
-  const [excerpt, setExcerpt] = useState<string>('');
-  const [content, setContent] = useState<string>('');
-  const [category, setCategory] = useState<'TECH' | 'BUSINESS'>('TECH');
+export type PostEditorInitialData = {
+  title: string;
+  excerpt: string;
+  content: string;
+  category: 'TECH' | 'BUSINESS';
+  tags: SelectedTag[];
+};
+
+type SecondSectionProps = {
+  storageKey: string;
+  initialData?: PostEditorInitialData;
+};
+
+const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
+  const [title, setTitle] = useState<string>(initialData?.title ?? '');
+  const [excerpt, setExcerpt] = useState<string>(initialData?.excerpt ?? '');
+  const [content, setContent] = useState<string>(initialData?.content ?? '');
+  const [category, setCategory] = useState<'TECH' | 'BUSINESS'>(
+    initialData?.category ?? 'TECH',
+  );
   const [tagName, setTagName] = useState<string>('');
-  const [selectedTagList, setSelectedTagList] = useState<SelectedTag[]>([]);
+  const [selectedTagList, setSelectedTagList] = useState<SelectedTag[]>(
+    initialData?.tags ?? [],
+  );
 
   // 現在の入力値も正規化し、仮タグ一覧との部分一致検索に使用する。
   const normalizedTagName = normalizeTagName(tagName);
@@ -170,18 +187,14 @@ const SecondSection = () => {
       category,
       tags: selectedTagList,
     });
-    localStorage.setItem('postData', cashData);
+    localStorage.setItem(storageKey, cashData);
   }, [
+    storageKey,
     title,
-    setTitle,
     excerpt,
-    setExcerpt,
     content,
-    setContent,
     category,
-    setCategory,
     selectedTagList,
-    setSelectedTagList,
   ]);
 
   return (
@@ -199,12 +212,15 @@ const SecondSection = () => {
               id="post-title"
               name="title"
               type="text"
+              value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={100}
               placeholder="記事の内容が伝わるタイトルを入力"
               className="mt-2 h-13 w-full rounded-xl border border-[#DDE4EC] bg-[#FBFCFD] px-4 text-base font-semibold text-[#26384D] outline-none transition placeholder:font-normal placeholder:text-[#A2ADBA] focus:border-[#254F8F]/50 focus:bg-white focus:ring-3 focus:ring-[#254F8F]/8 sm:text-lg"
             />
-            <p className="mt-2 text-right text-xs text-[#98A4B3]">0 / 100</p>
+            <p className="mt-2 text-right text-xs text-[#98A4B3]">
+              {title.length} / 100
+            </p>
           </div>
 
           <div>
@@ -221,12 +237,15 @@ const SecondSection = () => {
               id="post-excerpt"
               name="excerpt"
               rows={2}
+              value={excerpt}
               onChange={(e) => setExcerpt(e.target.value)}
               maxLength={160}
               placeholder="一覧画面に表示する短い説明を入力してください"
               className="mt-2 w-full resize-none rounded-xl border border-[#DDE4EC] bg-[#FBFCFD] px-4 py-3 text-sm leading-6 text-[#344256] outline-none transition placeholder:text-[#A2ADBA] focus:border-[#254F8F]/50 focus:bg-white focus:ring-3 focus:ring-[#254F8F]/8"
             />
-            <p className="mt-1 text-right text-xs text-[#98A4B3]">0 / 160</p>
+            <p className="mt-1 text-right text-xs text-[#98A4B3]">
+              {excerpt.length} / 160
+            </p>
           </div>
         </div>
 
@@ -279,13 +298,14 @@ const SecondSection = () => {
             id="post-content"
             name="content"
             spellCheck="false"
+            value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={`## 見出し\n\n共有したい知識や経験をMarkdownで書いてみましょう。\n\n- 背景や困っていたこと\n- 試したこと\n- 解決方法と学び`}
             className="min-h-130 w-full resize-y bg-white px-5 py-6 pb-16 font-mono text-sm leading-7 text-[#344256] outline-none placeholder:text-[#A7B1BE] sm:px-7 lg:min-h-147.5"
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-[#EEF1F4] bg-white/95 px-5 py-3 text-xs text-[#8A97A8] backdrop-blur sm:px-7">
             <span>Markdown記法に対応しています</span>
-            <span>0文字</span>
+            <span>{content.length}文字</span>
           </div>
         </div>
       </section>
@@ -305,7 +325,7 @@ const SecondSection = () => {
                 name="category"
                 value="TECH"
                 onChange={() => setCategory('TECH')}
-                defaultChecked
+                checked={category === 'TECH'}
                 className="mt-1 accent-[#254F8F]"
               />
               <span>
@@ -323,6 +343,7 @@ const SecondSection = () => {
                 name="category"
                 value="BUSINESS"
                 onChange={() => setCategory('BUSINESS')}
+                checked={category === 'BUSINESS'}
                 className="mt-1 accent-[#995D31]"
               />
               <span>
@@ -426,7 +447,7 @@ const SecondSection = () => {
                 #{tag.name}
                 <button
                   type="button"
-                  aria-label={`${tag}タグを削除`}
+                  aria-label={`${tag.name}タグを削除`}
                   onClick={() =>
                     setSelectedTagList((prev) =>
                       prev.filter((prevTag) => prevTag.name !== tag.name),

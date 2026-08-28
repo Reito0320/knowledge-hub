@@ -1,4 +1,4 @@
-type PostTagInput =
+export type PostTagInput =
   | {
       type: 'existing';
       id: string;
@@ -13,9 +13,9 @@ type PostTagInput =
 const createTagSlug = (name: string) =>
   name.trim().normalize('NFKC').toLowerCase().replace(/\s+/g, '-');
 
+// Postのネスト作成・更新で利用するTagとの接続情報を組み立てる。
 export const createPostTagData = (tags: PostTagInput[]) => {
   return tags.map((tag) => {
-    // 既存タグはIDで接続する
     if (tag.type === 'existing') {
       return {
         tag: {
@@ -26,8 +26,6 @@ export const createPostTagData = (tags: PostTagInput[]) => {
       };
     }
 
-    // 新規タグは、同じslugがあれば接続し、
-    // 存在しなければ新しく作成する
     const name = tag.name.trim();
     const slug = createTagSlug(name);
 
