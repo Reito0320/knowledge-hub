@@ -18,7 +18,7 @@ export const setCookie = async (key: string, value: string) => {
     cookieStore.set(key, value, {
       secure: true,
       sameSite: 'lax',
-      maxAge: 60 * 60, // 1時間にしてcognitoで発行されたtokenと期限を合わせる
+      maxAge: 6 * 60 * 60, // 自前Session JWTと合わせて6時間
       httpOnly: true,
       path: '/',
     });

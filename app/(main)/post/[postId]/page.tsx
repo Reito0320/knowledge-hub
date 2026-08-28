@@ -4,6 +4,7 @@ import {
   fetchCreatePostComment,
   fetchGetTargetPost,
   fetchTogglePostLike,
+  fetchToggleBookmark,
   type PostDetailData,
 } from '@/app/api/post/[postId]/fetch';
 import MarkdownRenderer from '@/comp/MarkdownRender';
@@ -13,6 +14,7 @@ import { use, useEffect, useState } from 'react';
 import {
   FiArrowLeft,
   FiBookOpen,
+  FiBookmark,
   FiCalendar,
   FiClock,
   FiEdit3,
@@ -65,6 +67,7 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
   const [commentContent, setCommentContent] = useState('');
   const [isUpdatingLike, setIsUpdatingLike] = useState(false);
   const [isPostingComment, setIsPostingComment] = useState(false);
+  const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
   const [engagementError, setEngagementError] = useState('');
 
   useEffect(() => {
@@ -169,6 +172,35 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
       );
     } finally {
       setIsPostingComment(false);
+    }
+  };
+
+  const handleToggleBookmark = async () => {
+    if (isUpdatingBookmark) return;
+    try {
+      setIsUpdatingBookmark(true);
+      setEngagementError('');
+      const result = await fetchToggleBookmark(postId);
+      setPostData((current) =>
+        current
+          ? {
+              ...current,
+              bookmarkedByCurrentUser: result.bookmarked,
+              _count: {
+                ...current._count,
+                bookmarks: result.bookmarkCount,
+              },
+            }
+          : current,
+      );
+    } catch (error) {
+      setEngagementError(
+        error instanceof Error
+          ? error.message
+          : 'お気に入りを更新できませんでした。',
+      );
+    } finally {
+      setIsUpdatingBookmark(false);
     }
   };
 
@@ -304,6 +336,25 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
                   className={postData.likedByCurrentUser ? 'fill-current' : ''}
                 />
                 {postData._count.likes}
+              </button>
+              <button
+                type="button"
+                onClick={handleToggleBookmark}
+                disabled={isUpdatingBookmark}
+                aria-pressed={postData.bookmarkedByCurrentUser}
+                className={`inline-flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-bold transition disabled:opacity-60 ${
+                  postData.bookmarkedByCurrentUser
+                    ? 'border-[#E5C9A9] bg-[#FCF3E8] text-[#9A5D2E]'
+                    : 'border-[#DDD6CF] bg-[#FCFAF7] text-[#66758A] hover:border-[#D99A70] hover:text-[#B26936]'
+                }`}
+              >
+                <FiBookmark
+                  aria-hidden="true"
+                  className={
+                    postData.bookmarkedByCurrentUser ? 'fill-current' : ''
+                  }
+                />
+                お気に入り {postData._count.bookmarks}
               </button>
             </div>
 

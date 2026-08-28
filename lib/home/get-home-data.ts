@@ -74,7 +74,8 @@ export const getHomeData = async () => {
     latestPosts,
     trendingTags,
     featuredMembers,
-  ] = await prisma.$transaction([
+  // 相互依存しない読み取りはtransactionで直列化せず、並列実行して待ち時間を短縮する。
+  ] = await Promise.all([
     prisma.post.count({ where: { status: 'PUBLISHED' } }),
     prisma.user.count({
       where: { posts: { some: { status: 'PUBLISHED' } } },

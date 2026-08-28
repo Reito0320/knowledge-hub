@@ -9,9 +9,11 @@ export type PostDetailData = {
   updatedAt: string;
   canEdit: boolean;
   likedByCurrentUser: boolean;
+  bookmarkedByCurrentUser: boolean;
   _count: {
     likes: number;
     comments: number;
+    bookmarks: number;
   };
   comments: PostComment[];
   postTags: Array<{
@@ -102,4 +104,20 @@ export const fetchCreatePostComment = async (
     message: string;
     comment: PostComment;
   }>;
+};
+
+export const fetchToggleBookmark = async (postId: string) => {
+  const response = await fetch(`/api/post/${postId}/bookmark`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error('お気に入りを更新できませんでした。');
+  return response.json() as Promise<{
+    bookmarked: boolean;
+    bookmarkCount: number;
+  }>;
+};
+
+export const fetchDeletePost = async (postId: string) => {
+  const response = await fetch(`/api/post/${postId}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error('記事を削除できませんでした。');
 };

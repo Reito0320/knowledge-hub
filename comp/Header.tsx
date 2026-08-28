@@ -8,6 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
   FiCamera,
+  FiBookmark,
   FiEdit3,
   FiFileText,
   FiLogIn,
@@ -32,6 +33,8 @@ type MemberSuggestion = {
   } | null;
 };
 
+type DepartmentOption = { id: string; name: string };
+
 const Header = () => {
   const router = useRouter();
   const pathname = usePathname();
@@ -49,6 +52,8 @@ const Header = () => {
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [profilePreviewUrl, setProfilePreviewUrl] = useState<string | null>(null);
   const [profileNotice, setProfileNotice] = useState('');
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const profileFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -58,6 +63,7 @@ const Header = () => {
       try {
         const sessionUser = await fetchGetSession();
         setUser(sessionUser);
+        setSelectedDepartmentId(sessionUser?.department?.id ?? '');
         setHasImageError(false);
       } catch (error) {
         console.error('Sessionの確認に失敗しました:', error);
@@ -68,7 +74,7 @@ const Header = () => {
     };
 
     void checkSession();
-  }, [pathname]);
+  }, []);
 
   useEffect(() => {
     const keyword = searchMember.trim();
@@ -118,6 +124,17 @@ const Header = () => {
   }, [isProfileModalOpen]);
 
   useEffect(() => {
+    if (!isProfileModalOpen || departments.length > 0) return;
+
+    void fetch('/api/departments')
+      .then((response) => response.json())
+      .then((data: { departments: DepartmentOption[] }) =>
+        setDepartments(data.departments),
+      )
+      .catch((error) => console.error('部署一覧を取得できませんでした:', error));
+  }, [departments.length, isProfileModalOpen]);
+
+  useEffect(() => {
     return () => {
       if (profilePreviewUrl) URL.revokeObjectURL(profilePreviewUrl);
     };
@@ -144,11 +161,31 @@ const Header = () => {
   };
 
   const handleSaveProfileImage = async () => {
-    if (!profileImageFile) return;
+    try {
+      const response = await fetch('/api/users/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ departmentId: selectedDepartmentId || null }),
+      });
+      if (!response.ok) throw new Error('プロフィールを更新できませんでした。');
 
-    // TODO: S3の署名付きURLを取得し、profileImageFileをアップロードする。
-    // TODO: アップロード後のS3 URLをUser.photoUrlへ保存するAPIを呼び出す。
-    setProfileNotice('S3アップロードAPIを接続すると保存できるようになります。');
+      const data = (await response.json()) as { user: SessionUser };
+      setUser(data.user);
+
+      if (!profileImageFile) {
+        setProfileNotice('部署を更新しました。');
+        return;
+      }
+
+      // TODO: S3の署名付きURLを取得し、profileImageFileをアップロードする。
+      // TODO: アップロード後のS3 URLをUser.photoUrlへ保存するAPIを呼び出す。
+      setProfileNotice(
+        '部署を更新しました。画像保存はS3接続後に利用できます。',
+      );
+    } catch (error) {
+      console.error(error);
+      setProfileNotice('プロフィールを更新できませんでした。');
+    }
   };
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -206,6 +243,13 @@ const Header = () => {
       requiresLogin: true,
     },
     {
+      href: '/bookmarks',
+      label: 'お気に入り',
+      icon: FiBookmark,
+      isActive: pathname === '/bookmarks',
+      requiresLogin: true,
+    },
+    {
       href: '/post/new',
       label: '投稿する',
       icon: FiEdit3,
@@ -249,7 +293,7 @@ const Header = () => {
         <div className="col-start-1 row-start-1 flex shrink-0 items-center gap-4 xl:gap-6">
           <Link
             href="/"
-            className="w-fit shrink-0"
+            className="flex w-fit shrink-0 items-center gap-2"
             aria-label="Knowledge Hub ホーム"
           >
             {/* モバイルではロゴ全体を縮小せず、Compassアイコンを固定サイズで表示する。 */}
@@ -261,6 +305,9 @@ const Header = () => {
               className="size-10 shrink-0 sm:hidden"
               loading="eager"
             />
+            <span className="text-base font-extrabold tracking-tight text-[#1E3A5F] sm:hidden">
+              Compass
+            </span>
             <Image
               src="/compass-logo-full.png"
               alt="Knowledge Hub"
@@ -497,6 +544,29 @@ const Header = () => {
                 onChange={handleProfileImageChange}
                 className="sr-only"
               />
+              <div className="mt-5">
+                <label
+                  htmlFor="profile-department"
+                  className="mb-2 block text-sm font-bold text-[#344256]"
+                >
+                  表示する部署名
+                </label>
+                <select
+                  id="profile-department"
+                  value={selectedDepartmentId}
+                  onChange={(event) =>
+                    setSelectedDepartmentId(event.target.value)
+                  }
+                  className="h-11 w-full rounded-xl border border-[#D8E0E9] bg-[#FCFAF7] px-3 text-sm text-[#344256] outline-none focus:border-[#B97845]/50"
+                >
+                  <option value="">部署未設定</option>
+                  {departments.map((department) => (
+                    <option key={department.id} value={department.id}>
+                      {department.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <button
                 type="button"
                 onClick={() => profileFileInputRef.current?.click()}
@@ -518,8 +588,7 @@ const Header = () => {
               <button
                 type="button"
                 onClick={handleSaveProfileImage}
-                disabled={!profileImageFile}
-                className="mt-5 h-11 w-full rounded-xl bg-[#254F8F] text-sm font-bold text-white transition hover:bg-[#1E3A5F] disabled:cursor-not-allowed disabled:opacity-40"
+                className="mt-5 h-11 w-full rounded-xl bg-[#254F8F] text-sm font-bold text-white transition hover:bg-[#1E3A5F]"
               >
                 変更を保存
               </button>

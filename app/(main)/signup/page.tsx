@@ -3,11 +3,22 @@
 import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { handleSignup } from './signup';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const SingUpPage = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [departments, setDepartments] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+
+  useEffect(() => {
+    void fetch('/api/departments')
+      .then((response) => response.json())
+      .then((data: { departments: Array<{ id: string; name: string }> }) =>
+        setDepartments(data.departments),
+      );
+  }, []);
 
   const handleConfirm = async (e: React.SubmitEvent<HTMLFormElement>) => {
     setIsLoading(true);
@@ -18,8 +29,9 @@ const SingUpPage = () => {
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
+    const departmentId = formData.get('departmentId') as string;
 
-    const signup = await handleSignup(name, email, password);
+    const signup = await handleSignup(name, email, password, departmentId);
     if (!signup) return;
     setIsLoading(false);
     window.alert(`${email} 当てに送られている認証コードを確認してください。`);
@@ -125,6 +137,31 @@ const SingUpPage = () => {
                 className="w-full rounded-[10px] border border-compass-border bg-white px-3.5 py-2.5 text-sm outline-none"
               />
             </div>
+            <div className="mb-4">
+              <label
+                htmlFor="departmentId"
+                className="mb-1.5 block text-xs font-semibold text-compass-ink"
+              >
+                表示する部署名
+              </label>
+              <select
+                id="departmentId"
+                name="departmentId"
+                required
+                defaultValue=""
+                className="w-full rounded-[10px] border border-compass-border bg-white px-3.5 py-2.5 text-sm outline-none"
+              >
+                <option value="" disabled>
+                  部署を選択してください
+                </option>
+                {departments.map((department) => (
+                  <option key={department.id} value={department.id}>
+                    {department.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="mb-4">
               <label
                 htmlFor="email"

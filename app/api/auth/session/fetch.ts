@@ -3,6 +3,7 @@ export type SessionUser = {
   name: string;
   email: string;
   photoUrl: string | null;
+  department: { id: string; name: string } | null;
 };
 
 /**

@@ -41,6 +41,7 @@ export const GET = async () => {
         name: true,
         email: true,
         photoUrl: true,
+        department: { select: { id: true, name: true } },
       },
     });
 

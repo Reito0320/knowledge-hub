@@ -1,4 +1,5 @@
 import { fetchPostCreateSession } from '@/app/api/auth/session/fetch';
+import { fetchPostCreateUser } from '@/app/api/users/provision/fetch';
 import { fetchAuthSession, signIn } from 'aws-amplify/auth';
 
 /**
@@ -28,6 +29,10 @@ export const handleLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
 
     /* 未ログインだったので、再度login処理を実行し、取得しなおしたtokenすらも取得できなかった場合 */
     if (!accessToken) throw new Error('access tokenを取得できません');
+
+    const departmentId = sessionStorage.getItem('signupDepartmentId');
+    await fetchPostCreateUser(accessToken, departmentId);
+    sessionStorage.removeItem('signupDepartmentId');
 
     /* ここでtokenの認証を行うための通信を実行 */
     await fetchPostCreateSession(`Bearer ${accessToken}`);

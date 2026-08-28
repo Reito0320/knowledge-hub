@@ -1,5 +1,6 @@
 'use client';
 import { fetchGETPostData, type PostListItem } from '@/app/api/post/fetch';
+import { fetchDeletePost } from '@/app/api/post/[postId]/fetch';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
@@ -11,6 +12,7 @@ import {
   FiMessageCircle,
   FiPlus,
   FiTag,
+  FiTrash2,
 } from 'react-icons/fi';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import { postStatusCounter } from './post';
@@ -66,6 +68,18 @@ const PostPage = () => {
   }, []);
 
   const { publishedCount, draftCount, totalLikes } = postStatusCounter(posts);
+
+  const handleDeletePost = async (postId: string, title: string) => {
+    if (!window.confirm(`「${title || '無題の記事'}」を削除しますか？`)) return;
+
+    try {
+      await fetchDeletePost(postId);
+      setPosts((current) => current.filter((post) => post.id !== postId));
+    } catch (error) {
+      console.error(error);
+      setErrorMessage('記事を削除できませんでした。');
+    }
+  };
 
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-[#F7F6F3] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
@@ -196,15 +210,27 @@ const PostPage = () => {
                       )}
                     </div>
 
-                    <Link
-                      href={`/post/${post.id}/edit`}
-                      /* 親からの遷移アクションの伝播を防ぐ */
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#DDE4EC] px-4 text-sm font-bold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#EEF4FB] hover:text-[#254F8F]"
-                    >
-                      <FiEdit3 aria-hidden="true" />
-                      編集する
-                    </Link>
+                    <div className="flex shrink-0 gap-2">
+                      <Link
+                        href={`/post/${post.id}/edit`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#DDE4EC] px-4 text-sm font-bold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#EEF4FB] hover:text-[#254F8F]"
+                      >
+                        <FiEdit3 aria-hidden="true" />
+                        編集する
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleDeletePost(post.id, post.title);
+                        }}
+                        aria-label={`${post.title}を削除`}
+                        className="flex size-10 items-center justify-center rounded-lg border border-[#E7D5D5] text-[#A34F55] transition hover:bg-[#FBEFEF]"
+                      >
+                        <FiTrash2 aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mt-5 flex flex-wrap items-center gap-5 border-t border-[#EEF1F4] pt-4 text-xs font-semibold text-[#7B8899]">

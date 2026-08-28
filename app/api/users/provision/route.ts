@@ -22,6 +22,25 @@ export const POST = async (req: NextRequest) => {
     const accessToken = authorization.slice('Bearer '.length);
     const payload = await verifyCognitoAccessToken(accessToken);
     const cognitoUser = await getCognitoUser(accessToken);
+    const body = (await req.json().catch(() => ({}))) as {
+      departmentId?: unknown;
+    };
+    const departmentId =
+      typeof body.departmentId === 'string' && body.departmentId
+        ? body.departmentId
+        : null;
+
+    if (departmentId) {
+      const department = await prisma.department.findUnique({
+        where: { id: departmentId },
+        select: { id: true },
+      });
+      if (!department)
+        return NextResponse.json(
+          { message: '選択した部署が見つかりません。' },
+          { status: 400 },
+        );
+    }
 
     /* cognitoUserの中の情報が正常かどうかの確認 */
     if (
@@ -43,11 +62,12 @@ export const POST = async (req: NextRequest) => {
       where: {
         id: payload.sub,
       },
-      update: {},
+      update: departmentId ? { departmentId } : {},
       create: {
         id: payload.sub,
         email: cognitoUser.email,
         name: cognitoUser.name,
+        departmentId,
       },
       select: {
         id: true,

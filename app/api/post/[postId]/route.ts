@@ -66,7 +66,12 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
           select: { userId: true },
           take: 1,
         },
-        _count: { select: { likes: true, comments: true } },
+        bookmarks: {
+          where: { userId: currentUserId },
+          select: { userId: true },
+          take: 1,
+        },
+        _count: { select: { likes: true, comments: true, bookmarks: true } },
       },
     });
 
@@ -96,7 +101,9 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
         ...targetPost,
         canEdit,
         likedByCurrentUser: targetPost.likes.length > 0,
+        bookmarkedByCurrentUser: targetPost.bookmarks.length > 0,
         likes: undefined,
+        bookmarks: undefined,
       },
     });
   } catch (error) {
@@ -109,6 +116,24 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
       { status: 401 },
     );
   }
+};
+
+export const DELETE = async (_req: NextRequest, { params }: RouteContext) => {
+  const currentUserId = await getCurrentUser();
+  if (!currentUserId)
+    return NextResponse.json({ message: 'ログインが必要です。' }, { status: 401 });
+
+  const { postId } = await params;
+  const result = await prisma.post.deleteMany({
+    where: { id: postId, authorId: currentUserId },
+  });
+  if (result.count === 0)
+    return NextResponse.json(
+      { message: '記事がないか、削除権限がありません。' },
+      { status: 404 },
+    );
+
+  return NextResponse.json({ message: '記事を削除しました。' });
 };
 
 export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
