@@ -5,7 +5,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { FiLogIn, FiLogOut, FiSearch } from 'react-icons/fi';
+import {
+  FiEdit3,
+  FiFileText,
+  FiHome,
+  FiLogIn,
+  FiLogOut,
+  FiSearch,
+  FiUsers,
+} from 'react-icons/fi';
 import {
   fetchDeleteSession,
   fetchGetSession,
@@ -135,28 +143,92 @@ const Header = () => {
   };
 
   const initials = user?.name.trim().slice(0, 1).toUpperCase() || 'U';
+  const navigationItems = [
+    {
+      href: '/',
+      label: 'ホーム',
+      icon: FiHome,
+      isActive: pathname === '/',
+      requiresLogin: false,
+    },
+    {
+      href: '/search',
+      label: 'メンバー検索',
+      icon: FiUsers,
+      isActive: pathname.startsWith('/search'),
+      requiresLogin: false,
+    },
+    {
+      href: '/post',
+      label: '自分の記事',
+      icon: FiFileText,
+      isActive:
+        pathname === '/post' ||
+        (/^\/post\/[^/]+$/.test(pathname) && pathname !== '/post/new'),
+      requiresLogin: true,
+    },
+    {
+      href: '/post/new',
+      label: '投稿する',
+      icon: FiEdit3,
+      isActive:
+        pathname === '/post/new' || pathname.endsWith('/edit'),
+      requiresLogin: true,
+    },
+  ];
+
+  const visibleNavigationItems = navigationItems.filter(
+    (item) => !item.requiresLogin || Boolean(user),
+  );
+
+  const navigation = (
+    <nav aria-label="メインナビゲーション">
+      <ul className="flex items-center gap-1">
+        {visibleNavigationItems.map(({ href, label, icon: Icon, isActive }) => (
+          <li key={href}>
+            <Link
+              href={href}
+              aria-current={isActive ? 'page' : undefined}
+              className={`inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F] ${
+                isActive
+                  ? 'bg-[#E8F0FA] text-[#254F8F]'
+                  : 'text-[#66758A] hover:bg-[#F3F6F9] hover:text-[#254F8F]'
+              }`}
+            >
+              <Icon aria-hidden="true" className="size-4 shrink-0" />
+              <span>{label}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#DDE4EC] bg-white/95 backdrop-blur">
-      <div className="grid h-16 w-full grid-cols-[auto_minmax(90px,1fr)_auto] items-center gap-2 px-3 sm:gap-3 sm:px-4">
-        <Link
-          href="/"
-          className="w-fit shrink-0 justify-self-start"
-          aria-label="Knowledge Hub ホーム"
-        >
-          <Image
-            src={'/compass-logo-full.png'}
-            alt="Knowledge Hub"
-            width={150}
-            height={50}
-            className="h-auto w-24 sm:w-32 lg:w-36"
-            loading="eager"
-          />
-        </Link>
+      <div className="flex h-16 w-full items-center gap-2 px-3 sm:gap-3 sm:px-4 lg:gap-4 lg:px-6">
+        <div className="flex shrink-0 items-center gap-4 xl:gap-6">
+          <Link
+            href="/"
+            className="w-fit shrink-0"
+            aria-label="Knowledge Hub ホーム"
+          >
+            <Image
+              src={'/compass-logo-full.png'}
+              alt="Knowledge Hub"
+              width={150}
+              height={50}
+              className="h-auto w-24 sm:w-32 lg:w-30 xl:w-36"
+              loading="eager"
+            />
+          </Link>
+
+          <div className="hidden lg:block">{navigation}</div>
+        </div>
 
         <form
           onSubmit={handleSearchMember}
-          className="relative col-start-2 row-start-1 h-9 w-full max-w-xs justify-self-end sm:h-10"
+          className="relative ml-auto h-9 min-w-0 flex-1 sm:h-10 lg:max-w-52 xl:max-w-72"
         >
           <label htmlFor="header-search" className="sr-only">
             メンバーを検索
@@ -220,7 +292,7 @@ const Header = () => {
           )}
         </form>
 
-        <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {isCheckingSession ? (
             <div
               className="h-10 w-24 animate-pulse rounded-lg bg-[#EEF2F6]"
@@ -228,9 +300,10 @@ const Header = () => {
             />
           ) : user ? (
             <>
-              <div
-                onClick={() => router.push('/post')}
-                className="flex min-w-0 items-center gap-2 cursor-pointer"
+              <Link
+                href="/post"
+                aria-label={`${user.name}の記事一覧`}
+                className="flex min-w-0 items-center gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F]"
               >
                 <div className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#E8F0FA] text-sm font-bold text-[#254F8F] ring-2 ring-white shadow-sm">
                   {user.photoUrl && !hasImageError ? (
@@ -246,7 +319,7 @@ const Header = () => {
                     <span aria-hidden="true">{initials}</span>
                   )}
                 </div>
-                <div className="hidden min-w-0 xl:block">
+                <div className="hidden min-w-0 2xl:block">
                   <p className="max-w-32 truncate text-sm font-bold text-[#344256]">
                     {user.name}
                   </p>
@@ -254,7 +327,7 @@ const Header = () => {
                     {user.email}
                   </p>
                 </div>
-              </div>
+              </Link>
               <button
                 type="button"
                 onClick={handleSignOut}
@@ -262,7 +335,7 @@ const Header = () => {
                 className="flex h-10 items-center gap-2 rounded-lg border border-[#DDE4EC] bg-white px-3 text-sm font-semibold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#254F8F]/5 hover:text-[#254F8F] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <FiLogOut aria-hidden="true" className="size-4" />
-                <span className="hidden sm:inline">
+                <span className="hidden xl:inline">
                   {isSigningOut ? '処理中...' : 'サインアウト'}
                 </span>
               </button>
@@ -273,10 +346,14 @@ const Header = () => {
               className="flex h-10 items-center gap-2 rounded-lg bg-[#254F8F] px-4 text-sm font-bold text-white transition hover:bg-[#1E3A5F]"
             >
               <FiLogIn aria-hidden="true" className="size-4" />
-              ログイン
+              <span className="hidden sm:inline">ログイン</span>
             </Link>
           )}
         </div>
+      </div>
+
+      <div className="overflow-x-auto border-t border-[#EEF1F4] px-3 py-1.5 sm:px-4 lg:hidden">
+        <div className="min-w-max">{navigation}</div>
       </div>
     </header>
   );

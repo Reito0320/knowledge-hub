@@ -20,7 +20,8 @@ export type SelectedTag =
       name: string;
     };
 
-import { useEffect, useState } from 'react';
+import MarkdownRenderer from '@/comp/MarkdownRender';
+import { useEffect, useRef, useState } from 'react';
 import {
   FiBold,
   FiBookOpen,
@@ -60,6 +61,16 @@ type SecondSectionProps = {
   initialData?: PostEditorInitialData;
 };
 
+type EditorMode = 'edit' | 'preview';
+type MarkdownTool =
+  | 'heading'
+  | 'bold'
+  | 'italic'
+  | 'list'
+  | 'link'
+  | 'image'
+  | 'code';
+
 const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
   const [title, setTitle] = useState<string>(initialData?.title ?? '');
   const [excerpt, setExcerpt] = useState<string>(initialData?.excerpt ?? '');
@@ -72,6 +83,8 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
   const [selectedTagList, setSelectedTagList] = useState<SelectedTag[]>(
     initialData?.tags ?? [],
   );
+  const [editorMode, setEditorMode] = useState<EditorMode>('edit');
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 現在の入力値も正規化し、仮タグ一覧との部分一致検索に使用する。
   const normalizedTagName = normalizeTagName(tagName);
@@ -178,15 +191,107 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     setTagName('');
   };
 
-  const editorTools = [
-    { label: '見出し', icon: FiType },
-    { label: '太字', icon: FiBold },
-    { label: '斜体', icon: FiItalic },
-    { label: 'リスト', icon: FiList },
-    { label: 'リンク', icon: FiLink },
-    { label: '画像', icon: FiImage },
-    { label: 'コード', icon: FiCode },
+  const editorTools: {
+    label: string;
+    icon: typeof FiType;
+    tool: MarkdownTool;
+  }[] = [
+    { label: '見出し', icon: FiType, tool: 'heading' },
+    { label: '太字', icon: FiBold, tool: 'bold' },
+    { label: '斜体', icon: FiItalic, tool: 'italic' },
+    { label: 'リスト', icon: FiList, tool: 'list' },
+    { label: 'リンク', icon: FiLink, tool: 'link' },
+    { label: '画像', icon: FiImage, tool: 'image' },
+    { label: 'コード', icon: FiCode, tool: 'code' },
   ];
+
+  const applyMarkdown = (tool: MarkdownTool) => {
+    const textarea = contentTextareaRef.current;
+    if (!textarea) return;
+
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const selectedText = content.slice(selectionStart, selectionEnd);
+
+    let replacement = '';
+    let nextSelectionStart = 0;
+    let nextSelectionEnd = 0;
+
+    // 選択中の文字があれば装飾し、なければ編集しやすい仮文字を挿入する。
+    switch (tool) {
+      case 'heading': {
+        const text = selectedText || '見出し';
+        replacement = text
+          .split('\n')
+          .map((line) => `## ${line}`)
+          .join('\n');
+        nextSelectionStart = selectedText ? 0 : 3;
+        nextSelectionEnd = selectedText ? replacement.length : 3 + text.length;
+        break;
+      }
+      case 'bold': {
+        const text = selectedText || '太字';
+        replacement = `**${text}**`;
+        nextSelectionStart = 2;
+        nextSelectionEnd = 2 + text.length;
+        break;
+      }
+      case 'italic': {
+        const text = selectedText || '斜体';
+        replacement = `*${text}*`;
+        nextSelectionStart = 1;
+        nextSelectionEnd = 1 + text.length;
+        break;
+      }
+      case 'list': {
+        const text = selectedText || 'リスト項目';
+        replacement = text
+          .split('\n')
+          .map((line) => `- ${line}`)
+          .join('\n');
+        nextSelectionStart = selectedText ? 0 : 2;
+        nextSelectionEnd = selectedText ? replacement.length : 2 + text.length;
+        break;
+      }
+      case 'link': {
+        const text = selectedText || 'リンクテキスト';
+        replacement = `[${text}](https://example.com)`;
+        nextSelectionStart = 1;
+        nextSelectionEnd = 1 + text.length;
+        break;
+      }
+      case 'image': {
+        const text = selectedText || '画像の説明';
+        replacement = `![${text}](https://example.com/image.png)`;
+        nextSelectionStart = 2;
+        nextSelectionEnd = 2 + text.length;
+        break;
+      }
+      case 'code': {
+        const text = selectedText || 'コード';
+        const isBlockCode = selectedText.includes('\n');
+        replacement = isBlockCode ? `\`\`\`\n${text}\n\`\`\`` : `\`${text}\``;
+        nextSelectionStart = isBlockCode ? 4 : 1;
+        nextSelectionEnd = nextSelectionStart + text.length;
+        break;
+      }
+    }
+
+    const nextContent =
+      content.slice(0, selectionStart) +
+      replacement +
+      content.slice(selectionEnd);
+    setContent(nextContent);
+
+    // Reactの再描画後に、挿入した文字を選択した状態へ戻す。
+    window.requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        selectionStart + nextSelectionStart,
+        selectionStart + nextSelectionEnd,
+      );
+    });
+  };
 
   useEffect(() => {
     const cashData = JSON.stringify({
@@ -260,17 +365,28 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
 
         <div className="flex items-center justify-between border-b border-[#DDE4EC] bg-[#F8FAFC] px-4 sm:px-6">
           <div className="flex h-14 items-end gap-1">
-            {/* TODO: editorMode stateを追加してMarkdown編集とプレビューを切り替える */}
             <button
               type="button"
-              className="flex h-12 items-center gap-2 border-b-2 border-[#254F8F] px-3 text-sm font-bold text-[#254F8F]"
+              onClick={() => setEditorMode('edit')}
+              aria-pressed={editorMode === 'edit'}
+              className={`flex h-12 items-center gap-2 border-b-2 px-3 text-sm transition ${
+                editorMode === 'edit'
+                  ? 'border-[#254F8F] font-bold text-[#254F8F]'
+                  : 'border-transparent font-semibold text-[#7B8899] hover:text-[#254F8F]'
+              }`}
             >
               <FiEdit3 aria-hidden="true" />
               編集
             </button>
             <button
               type="button"
-              className="flex h-12 items-center gap-2 border-b-2 border-transparent px-3 text-sm font-semibold text-[#7B8899] transition hover:text-[#254F8F]"
+              onClick={() => setEditorMode('preview')}
+              aria-pressed={editorMode === 'preview'}
+              className={`flex h-12 items-center gap-2 border-b-2 px-3 text-sm transition ${
+                editorMode === 'preview'
+                  ? 'border-[#254F8F] font-bold text-[#254F8F]'
+                  : 'border-transparent font-semibold text-[#7B8899] hover:text-[#254F8F]'
+              }`}
             >
               <FiEye aria-hidden="true" />
               プレビュー
@@ -282,36 +398,54 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1 border-b border-[#E8EDF2] px-4 py-2.5 sm:px-6">
-          {editorTools.map(({ label, icon: Icon }) => (
-            <button
-              key={label}
-              type="button"
-              title={label}
-              aria-label={label}
-              className="flex size-9 items-center justify-center rounded-lg text-[#66758A] transition hover:bg-[#E8F0FA] hover:text-[#254F8F]"
-            >
-              <Icon aria-hidden="true" />
-            </button>
-          ))}
-          <span className="ml-auto hidden rounded-md bg-[#EEF2F6] px-2 py-1 font-mono text-[10px] font-semibold text-[#788698] sm:inline">
-            Markdown
-          </span>
-        </div>
+        {editorMode === 'edit' && (
+          <div className="flex flex-wrap items-center gap-1 border-b border-[#E8EDF2] px-4 py-2.5 sm:px-6">
+            {editorTools.map(({ label, icon: Icon, tool }) => (
+              <button
+                key={label}
+                type="button"
+                title={label}
+                aria-label={`${label}のMarkdownを挿入`}
+                onClick={() => applyMarkdown(tool)}
+                className="flex size-9 items-center justify-center rounded-lg text-[#66758A] transition hover:bg-[#E8F0FA] hover:text-[#254F8F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F]"
+              >
+                <Icon aria-hidden="true" />
+              </button>
+            ))}
+            <span className="ml-auto hidden rounded-md bg-[#EEF2F6] px-2 py-1 font-mono text-[10px] font-semibold text-[#788698] sm:inline">
+              Markdown
+            </span>
+          </div>
+        )}
 
         <div className="relative">
-          <label htmlFor="post-content" className="sr-only">
-            記事本文
-          </label>
-          <textarea
-            id="post-content"
-            name="content"
-            spellCheck="false"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder={`## 見出し\n\n共有したい知識や経験をMarkdownで書いてみましょう。\n\n- 背景や困っていたこと\n- 試したこと\n- 解決方法と学び`}
-            className="min-h-130 w-full resize-y bg-white px-5 py-6 pb-16 font-mono text-sm leading-7 text-[#344256] outline-none placeholder:text-[#A7B1BE] sm:px-7 lg:min-h-147.5"
-          />
+          {editorMode === 'edit' ? (
+            <>
+              <label htmlFor="post-content" className="sr-only">
+                記事本文
+              </label>
+              <textarea
+                ref={contentTextareaRef}
+                id="post-content"
+                name="content"
+                spellCheck="false"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder={`## 見出し\n\n共有したい知識や経験をMarkdownで書いてみましょう。\n\n- 背景や困っていたこと\n- 試したこと\n- 解決方法と学び`}
+                className="min-h-130 w-full resize-y bg-white px-5 py-6 pb-16 font-mono text-sm leading-7 text-[#344256] outline-none placeholder:text-[#A7B1BE] sm:px-7 lg:min-h-147.5"
+              />
+            </>
+          ) : (
+            <div className="min-h-130 bg-white px-5 py-6 pb-16 sm:px-7 lg:min-h-147.5">
+              {content.trim() ? (
+                <MarkdownRenderer content={content} />
+              ) : (
+                <div className="flex min-h-96 items-center justify-center rounded-xl border border-dashed border-[#DDE4EC] bg-[#FBFCFD] px-6 text-center text-sm text-[#8A97A8]">
+                  本文を入力すると、ここにMarkdownのプレビューが表示されます。
+                </div>
+              )}
+            </div>
+          )}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-[#EEF1F4] bg-white/95 px-5 py-3 text-xs text-[#8A97A8] backdrop-blur sm:px-7">
             <span>Markdown記法に対応しています</span>
             <span>{content.length}文字</span>
@@ -328,7 +462,13 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
             内容に最も近いカテゴリを選択してください。
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-[#254F8F] bg-[#EEF4FB] p-4">
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-xl p-4 transition ${
+                category === 'TECH'
+                  ? 'border-2 border-[#254F8F] bg-[#EEF4FB]'
+                  : 'border border-[#DDE4EC] bg-white hover:border-[#B8C4D2]'
+              }`}
+            >
               <input
                 type="radio"
                 name="category"
@@ -346,7 +486,13 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                 </span>
               </span>
             </label>
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#DDE4EC] bg-white p-4 transition hover:border-[#B8C4D2]">
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-xl p-4 transition ${
+                category === 'BUSINESS'
+                  ? 'border-2 border-[#995D31] bg-[#FAF1E9]'
+                  : 'border border-[#DDE4EC] bg-white hover:border-[#B8C4D2]'
+              }`}
+            >
               <input
                 type="radio"
                 name="category"
