@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FiBookOpen,
   FiBriefcase,
@@ -20,9 +20,53 @@ type FirstSectionProps = {
   };
 };
 
+type KnowledgeSuggestion = {
+  id: string;
+  title: string;
+  category: 'TECH' | 'BUSINESS';
+  author: { name: string };
+};
+
 const FirstSection = ({ stats }: FirstSectionProps) => {
   const router = useRouter();
   const [knowledgeSearch, setKnowledgeSearch] = useState<string>('');
+  const [knowledgeSuggestions, setKnowledgeSuggestions] = useState<
+    KnowledgeSuggestion[]
+  >([]);
+  const [isSearchingKnowledge, setIsSearchingKnowledge] = useState(false);
+
+  useEffect(() => {
+    const keyword = knowledgeSearch.trim();
+    if (!keyword) return;
+
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        setIsSearchingKnowledge(true);
+        const response = await fetch(
+          `/api/posts/suggestions?q=${encodeURIComponent(keyword)}`,
+          { signal: abortController.signal },
+        );
+        if (!response.ok) throw new Error('記事候補を取得できません。');
+
+        const data = (await response.json()) as {
+          posts: KnowledgeSuggestion[];
+        };
+        setKnowledgeSuggestions(data.posts);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        console.error(error);
+        setKnowledgeSuggestions([]);
+      } finally {
+        if (!abortController.signal.aborted) setIsSearchingKnowledge(false);
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      abortController.abort();
+    };
+  }, [knowledgeSearch]);
 
   const motionContainer = {
     containerVariants: {
@@ -67,7 +111,7 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
           >
             <motion.div
               variants={motionContainer.itemVariants}
-              className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#254F8F]/8 px-3 py-1.5 text-xs font-semibold text-[#254F8F]"
+              className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#FFF0E3] px-3 py-1.5 text-xs font-semibold text-[#B55F24]"
             >
               <FiBookOpen aria-hidden="true" />
               社内の知識を、みんなの資産へ
@@ -101,24 +145,35 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
                   icon: FiBookOpen,
                   value: stats.publishedPostCount,
                   label: '公開ナレッジ',
+                  cardClass: 'border-[#E2D5C8] bg-[#FCF7F2]',
+                  iconClass: 'bg-[#F4E2D1] text-[#A45F2F]',
                 },
                 {
                   icon: FiUsers,
                   value: stats.postingMemberCount,
                   label: '投稿メンバー',
+                  cardClass: 'border-[#D5E4DC] bg-[#F4F9F6]',
+                  iconClass: 'bg-[#DDEEE5] text-[#39745A]',
                 },
                 {
                   icon: FiBriefcase,
                   value: stats.departmentCount,
                   label: '参加部署',
+                  cardClass: 'border-[#D8DDED] bg-[#F5F6FB]',
+                  iconClass: 'bg-[#E4E7F3] text-[#5D658E]',
                 },
-              ].map(({ icon: Icon, value, label }) => (
+              ].map(
+                ({ icon: Icon, value, label, cardClass, iconClass }) => (
                 <motion.div
                   variants={motionContainer.itemVariants}
                   key={label}
-                  className="flex min-w-0 items-center gap-3 rounded-2xl border border-[#E0E6ED] bg-[#F8FAFC] px-4 py-4 shadow-sm sm:flex-col sm:items-start lg:px-4"
+                  whileHover={{ y: -3 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-4 shadow-sm sm:flex-col sm:items-start lg:px-4 ${cardClass}`}
                 >
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-[#254F8F]/8 text-[#254F8F]">
+                  <span
+                    className={`flex size-10 items-center justify-center rounded-xl ${iconClass}`}
+                  >
                     <Icon aria-hidden="true" />
                   </span>
                   <div className="min-w-0">
@@ -128,7 +183,8 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
                     </p>
                   </div>
                 </motion.div>
-              ))}
+                ),
+              )}
             </motion.div>
 
             <motion.div
@@ -152,7 +208,7 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
           initial="hidden"
           animate="visible"
           variants={motionContainer.itemVariants}
-          className="mt-9 rounded-2xl border border-[#D8E1EB] bg-[#F8FAFC] p-3 shadow-[0_10px_30px_rgba(30,58,95,0.06)] sm:flex sm:items-center sm:gap-3"
+          className="relative mt-9 rounded-2xl border border-[#E5DED5] bg-[#FCFAF7] p-3 shadow-[0_10px_30px_rgba(82,57,38,0.06)] sm:flex sm:items-center sm:gap-3"
         >
           <div className="flex min-w-0 flex-1 items-center gap-3 px-2">
             <FiSearch
@@ -166,7 +222,15 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
               id="knowledge-search"
               type="search"
               placeholder="例：Cognito認証、経費申請、障害対応..."
-              onChange={(e) => setKnowledgeSearch(e.target.value)}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                setKnowledgeSearch(nextValue);
+                if (!nextValue.trim()) {
+                  setKnowledgeSuggestions([]);
+                  setIsSearchingKnowledge(false);
+                }
+              }}
+              value={knowledgeSearch}
               className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-[#9AA7B7]"
             />
           </div>
@@ -177,6 +241,50 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
           >
             ナレッジを検索
           </button>
+
+          {knowledgeSearch.trim() && (
+            <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 overflow-hidden rounded-xl border border-[#E3DCD4] bg-white shadow-[0_18px_42px_rgba(72,48,30,0.14)]">
+              {isSearchingKnowledge ? (
+                <p className="px-4 py-3 text-sm text-[#8A8178]">
+                  ナレッジを検索中...
+                </p>
+              ) : knowledgeSuggestions.length > 0 ? (
+                <ul aria-label="ナレッジの検索候補" className="p-2">
+                  {knowledgeSuggestions.map((post) => (
+                    <li key={post.id}>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/post/${post.id}`)}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[#FCF5EE]"
+                      >
+                        <span
+                          className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-bold ${
+                            post.category === 'TECH'
+                              ? 'bg-[#E8F0FA] text-[#254F8F]'
+                              : 'bg-[#F8EADF] text-[#995D31]'
+                          }`}
+                        >
+                          {post.category === 'TECH' ? '技術' : '業務'}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-bold text-[#344256]">
+                            {post.title}
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs text-[#8A8178]">
+                            {post.author.name}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-4 py-3 text-sm text-[#8A8178]">
+                  一致するナレッジはありません。
+                </p>
+              )}
+            </div>
+          )}
         </motion.div>
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-[#66758A]">
           <span className="mr-1 font-semibold">よく検索されています</span>

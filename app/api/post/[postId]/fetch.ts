@@ -8,6 +8,12 @@ export type PostDetailData = {
   publishedAt: string | null;
   updatedAt: string;
   canEdit: boolean;
+  likedByCurrentUser: boolean;
+  _count: {
+    likes: number;
+    comments: number;
+  };
+  comments: PostComment[];
   postTags: Array<{
     tag: {
       id: string;
@@ -15,6 +21,17 @@ export type PostDetailData = {
       slug: string;
     };
   }>;
+};
+
+export type PostComment = {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: {
+    id: string;
+    name: string;
+    photoUrl: string | null;
+  };
 };
 
 type UpdatePostData = {
@@ -60,4 +77,29 @@ export const fetchUpdatePost = async (
 
   const response: { message: string; postId: string } = await res.json();
   return response;
+};
+
+export const fetchTogglePostLike = async (postId: string) => {
+  const response = await fetch(`/api/post/${postId}/like`, { method: 'POST' });
+  if (!response.ok) throw new Error('いいねを更新できませんでした。');
+  return response.json() as Promise<{ liked: boolean; likeCount: number }>;
+};
+
+export const fetchCreatePostComment = async (
+  postId: string,
+  content: string,
+) => {
+  const response = await fetch(`/api/post/${postId}/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  if (!response.ok) {
+    const body = (await response.json()) as { message?: string };
+    throw new Error(body.message ?? 'コメントを投稿できませんでした。');
+  }
+  return response.json() as Promise<{
+    message: string;
+    comment: PostComment;
+  }>;
 };

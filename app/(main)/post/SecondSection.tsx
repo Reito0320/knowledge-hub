@@ -21,6 +21,8 @@ export type SelectedTag =
     };
 
 import MarkdownRenderer from '@/comp/MarkdownRender';
+import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import {
   FiBold,
@@ -85,6 +87,15 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
   );
   const [editorMode, setEditorMode] = useState<EditorMode>('edit');
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastDispatchedDraftRef = useRef(
+    JSON.stringify({
+      title: initialData?.title ?? '',
+      excerpt: initialData?.excerpt ?? '',
+      content: initialData?.content ?? '',
+      category: initialData?.category ?? 'TECH',
+      tags: initialData?.tags ?? [],
+    }),
+  );
 
   // 現在の入力値も正規化し、仮タグ一覧との部分一致検索に使用する。
   const normalizedTagName = normalizeTagName(tagName);
@@ -302,6 +313,18 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
       tags: selectedTagList,
     });
     localStorage.setItem(storageKey, cashData);
+
+    // 初期表示では通信せず、実際に入力内容が変わった時だけ自動保存を依頼する。
+    if (cashData === lastDispatchedDraftRef.current) return;
+    lastDispatchedDraftRef.current = cashData;
+    window.dispatchEvent(
+      new CustomEvent('post-editor:draft-change', {
+        detail: {
+          storageKey,
+          data: JSON.parse(cashData),
+        },
+      }),
+    );
   }, [
     storageKey,
     title,
@@ -313,7 +336,12 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
 
   return (
     <>
-      <section className="min-w-0 overflow-hidden rounded-2xl border border-[#DDE4EC] bg-white shadow-[0_12px_35px_rgba(30,58,95,0.05)]">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="min-w-0 overflow-hidden rounded-2xl border border-[#DDE4EC] bg-white shadow-[0_12px_35px_rgba(30,58,95,0.05)]"
+      >
         <div className="space-y-6 border-b border-[#E8EDF2] p-5 sm:p-7">
           <div>
             <label
@@ -401,16 +429,17 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
         {editorMode === 'edit' && (
           <div className="flex flex-wrap items-center gap-1 border-b border-[#E8EDF2] px-4 py-2.5 sm:px-6">
             {editorTools.map(({ label, icon: Icon, tool }) => (
-              <button
+              <motion.button
                 key={label}
                 type="button"
                 title={label}
                 aria-label={`${label}のMarkdownを挿入`}
                 onClick={() => applyMarkdown(tool)}
+                whileTap={{ scale: 0.92 }}
                 className="flex size-9 items-center justify-center rounded-lg text-[#66758A] transition hover:bg-[#E8F0FA] hover:text-[#254F8F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F]"
               >
                 <Icon aria-hidden="true" />
-              </button>
+              </motion.button>
             ))}
             <span className="ml-auto hidden rounded-md bg-[#EEF2F6] px-2 py-1 font-mono text-[10px] font-semibold text-[#788698] sm:inline">
               Markdown
@@ -451,8 +480,13 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
             <span>{content.length}文字</span>
           </div>
         </div>
-      </section>
-      <aside className="space-y-5 xl:sticky xl:top-22">
+      </motion.section>
+      <motion.aside
+        initial={{ opacity: 0, x: 16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.45, delay: 0.08, ease: 'easeOut' }}
+        className="space-y-5 xl:sticky xl:top-22"
+      >
         <section className="rounded-2xl border border-[#DDE4EC] bg-white p-5">
           <div className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F]">
             <FiBookOpen aria-hidden="true" className="text-[#254F8F]" />
@@ -597,26 +631,33 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
           </div>
           {/* TODO: tag stateと候補検索APIを追加し、選択・削除できるようにする */}
           <div className="mt-3 flex flex-wrap gap-2">
-            {selectedTagList.map((tag) => (
-              <span
-                key={tag.name}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#E8F0FA] px-2.5 py-1.5 text-xs font-semibold text-[#254F8F]"
-              >
-                #{tag.name}
-                <button
-                  type="button"
-                  aria-label={`${tag.name}タグを削除`}
-                  onClick={() =>
-                    setSelectedTagList((prev) =>
-                      prev.filter((prevTag) => prevTag.name !== tag.name),
-                    )
-                  }
-                  className="rounded text-[#6E87A7] hover:text-[#1E3A5F]"
+            <AnimatePresence initial={false}>
+              {selectedTagList.map((tag) => (
+                <motion.span
+                  layout
+                  initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  key={tag.name}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold ${getTagColorClass(tag.name)}`}
                 >
-                  <FiX aria-hidden="true" />
-                </button>
-              </span>
-            ))}
+                  #{tag.name}
+                  <button
+                    type="button"
+                    aria-label={`${tag.name}タグを削除`}
+                    onClick={() =>
+                      setSelectedTagList((prev) =>
+                        prev.filter((prevTag) => prevTag.name !== tag.name),
+                      )
+                    }
+                    className="rounded text-current opacity-60 transition hover:opacity-100"
+                  >
+                    <FiX aria-hidden="true" />
+                  </button>
+                </motion.span>
+              ))}
+            </AnimatePresence>
           </div>
         </section>
 
@@ -649,7 +690,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
             完璧にまとめなくても大丈夫です。まずは下書きに保存して、少しずつ育てていきましょう。
           </p>
         </div>
-      </aside>
+      </motion.aside>
     </>
   );
 };

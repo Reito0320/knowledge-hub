@@ -1,9 +1,12 @@
 export type PostData = {
-  title?: string;
-  excerpt?: string;
-  content?: string;
-  category?: string;
-  tags: Array<{ type: 'existing'; id: string } | { type: 'new'; name: string }>;
+  title: string;
+  excerpt: string;
+  content: string;
+  category: 'TECH' | 'BUSINESS';
+  tags: Array<
+    | { type: 'existing'; id: string; name: string; slug: string }
+    | { type: 'new'; name: string }
+  >;
 };
 
 // GET /api/postが返す記事一覧専用の型。

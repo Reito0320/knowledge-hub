@@ -19,6 +19,15 @@ export type HomePost = {
   };
 };
 
+export type HomeMember = {
+  id: string;
+  name: string;
+  email: string;
+  jobTitle: string | null;
+  department: { name: string } | null;
+  _count: { posts: number };
+};
+
 const postSelect = {
   id: true,
   title: true,
@@ -64,6 +73,7 @@ export const getHomeData = async () => {
     popularPosts,
     latestPosts,
     trendingTags,
+    featuredMembers,
   ] = await prisma.$transaction([
     prisma.post.count({ where: { status: 'PUBLISHED' } }),
     prisma.user.count({
@@ -102,6 +112,21 @@ export const getHomeData = async () => {
       take: 8,
       select: { id: true, name: true, slug: true },
     }),
+    prisma.user.findMany({
+      where: { posts: { some: { status: 'PUBLISHED' } } },
+      orderBy: { posts: { _count: 'desc' } },
+      take: 6,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        jobTitle: true,
+        department: { select: { name: true } },
+        _count: {
+          select: { posts: { where: { status: 'PUBLISHED' } } },
+        },
+      },
+    }),
   ]);
 
   return {
@@ -117,5 +142,6 @@ export const getHomeData = async () => {
     popularPosts: popularPosts.map(serializePost),
     latestPosts: latestPosts.map(serializePost),
     trendingTags,
+    featuredMembers,
   };
 };

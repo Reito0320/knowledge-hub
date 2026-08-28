@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { FiHeart, FiMessageCircle } from 'react-icons/fi';
 import type { HomePost } from '@/lib/home/get-home-data';
+import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 
 type ThirdSectionProps = {
   latestArticles: HomePost[];
@@ -37,32 +39,47 @@ const ThirdSection = ({ latestArticles }: ThirdSectionProps) => {
           <button
             type="button"
             onClick={() => setSelectArticle('all')}
-            className={`rounded-lg px-4 py-2  ${selectArticle === 'all' ? 'bg-[#254F8F] text-white' : 'bg-white text-black'}`}
+            className={`rounded-lg px-4 py-2 transition ${selectArticle === 'all' ? 'bg-[#254F8F] text-white' : 'bg-white text-[#66758A] hover:bg-[#F3F6F9]'}`}
           >
             すべて
           </button>
           <button
             type="button"
             onClick={() => setSelectArticle('skill')}
-            className={`rounded-lg px-4 py-2  ${selectArticle === 'skill' ? 'bg-[#254F8F] text-white' : 'bg-white text-black'}`}
+            className={`rounded-lg px-4 py-2 transition ${selectArticle === 'skill' ? 'bg-[#254F8F] text-white' : 'bg-white text-[#66758A] hover:bg-[#F3F6F9]'}`}
           >
             技術
           </button>
           <button
             type="button"
             onClick={() => setSelectArticle('work')}
-            className={`rounded-lg px-4 py-2  ${selectArticle === 'work' ? 'bg-[#254F8F] text-white' : 'bg-white text-black'}`}
+            className={`rounded-lg px-4 py-2 transition ${selectArticle === 'work' ? 'bg-[#A45F2F] text-white' : 'bg-white text-[#66758A] hover:bg-[#FCF4EC]'}`}
           >
             業務
           </button>
         </div>
       </div>
-      <div className="mt-5 overflow-hidden rounded-2xl border border-[#E0E6ED] bg-white">
-        {filteredArticles.map((article, index) => (
-          <article
-            key={article.id}
-            className={`p-5 transition hover:bg-[#F8FAFC] sm:p-6 ${index !== filteredArticles.length - 1 ? 'border-b border-[#E9EDF2]' : ''}`}
-          >
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={selectArticle}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.28, ease: 'easeOut' }}
+          className="mt-5 overflow-hidden rounded-2xl border border-[#E0E6ED] bg-white"
+        >
+          {filteredArticles.map((article, index) => (
+            <motion.article
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                duration: 0.3,
+                delay: Math.min(index * 0.04, 0.2),
+                ease: 'easeOut',
+              }}
+              key={article.id}
+              className={`p-5 transition-colors hover:bg-[#FCFAF7] sm:p-6 ${index !== filteredArticles.length - 1 ? 'border-b border-[#E9EDF2]' : ''}`}
+            >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -92,7 +109,7 @@ const ThirdSection = ({ latestArticles }: ThirdSectionProps) => {
                   {article.postTags.map(({ tag }) => (
                     <span
                       key={tag.id}
-                      className="rounded bg-[#F1F4F7] px-1.5 py-1"
+                      className={`rounded px-1.5 py-1 ${getTagColorClass(tag.name)}`}
                     >
                       #{tag.name}
                     </span>
@@ -110,9 +127,10 @@ const ThirdSection = ({ latestArticles }: ThirdSectionProps) => {
                 </span>
               </div>
             </div>
-          </article>
-        ))}
-      </div>
+            </motion.article>
+          ))}
+        </motion.div>
+      </AnimatePresence>
     </section>
   );
 };

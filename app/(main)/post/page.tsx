@@ -12,6 +12,7 @@ import {
   FiPlus,
   FiTag,
 } from 'react-icons/fi';
+import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import { postStatusCounter } from './post';
 import { useRouter } from 'next/navigation';
 import Skeleton from '@/comp/Skeleton';
@@ -67,11 +68,11 @@ const PostPage = () => {
   const { publishedCount, draftCount, totalLikes } = postStatusCounter(posts);
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-[#F5F7FA] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F6F3] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
       <div className="mx-auto max-w-6xl">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-sm font-bold text-[#254F8F]">
+            <div className="flex items-center gap-2 text-sm font-bold text-[#B26936]">
               <FiBookOpen aria-hidden="true" />
               My Knowledge
             </div>
@@ -150,7 +151,7 @@ const PostPage = () => {
                 <article
                   key={post.id}
                   onClick={() => router.push('/post/' + post.id)}
-                  className="cursor-pointer group rounded-2xl border border-[#DDE4EC] bg-white p-5 transition hover:border-[#254F8F]/25 hover:shadow-[0_12px_30px_rgba(30,58,95,0.07)] sm:p-6"
+                  className="cursor-pointer group rounded-2xl border border-[#E3DDD6] bg-white p-5 transition hover:border-[#C98A59]/45 hover:shadow-[0_12px_30px_rgba(72,48,30,0.07)] sm:p-6"
                 >
                   <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
@@ -185,7 +186,7 @@ const PostPage = () => {
                           {post.postTags.map(({ tag }) => (
                             <span
                               key={tag.id}
-                              className="inline-flex items-center gap-1 rounded-md bg-[#F1F4F7] px-2 py-1 text-[11px] font-medium text-[#657287]"
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium ${getTagColorClass(tag.name)}`}
                             >
                               <FiTag aria-hidden="true" />
                               {tag.name}

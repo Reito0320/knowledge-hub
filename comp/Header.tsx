@@ -3,16 +3,18 @@
 import { signOut } from 'aws-amplify/auth';
 import Image from 'next/image';
 import Link from 'next/link';
+import { AnimatePresence, motion } from 'motion/react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  FiCamera,
   FiEdit3,
   FiFileText,
-  FiHome,
   FiLogIn,
   FiLogOut,
   FiSearch,
-  FiUsers,
+  FiUpload,
+  FiX,
 } from 'react-icons/fi';
 import {
   fetchDeleteSession,
@@ -43,6 +45,11 @@ const Header = () => {
   const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
   const [hasImageError, setHasImageError] = useState<boolean>(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [profilePreviewUrl, setProfilePreviewUrl] = useState<string | null>(null);
+  const [profileNotice, setProfileNotice] = useState('');
+  const profileFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -98,6 +105,51 @@ const Header = () => {
       abortController.abort();
     };
   }, [searchMember, user]);
+
+  useEffect(() => {
+    if (!isProfileModalOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsProfileModalOpen(false);
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isProfileModalOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (profilePreviewUrl) URL.revokeObjectURL(profilePreviewUrl);
+    };
+  }, [profilePreviewUrl]);
+
+  const handleProfileImageChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setProfileNotice('画像ファイルを選択してください。');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileNotice('画像は5MB以下にしてください。');
+      return;
+    }
+
+    setProfileImageFile(file);
+    setProfilePreviewUrl(URL.createObjectURL(file));
+    setProfileNotice('プレビューを確認して保存してください。');
+  };
+
+  const handleSaveProfileImage = async () => {
+    if (!profileImageFile) return;
+
+    // TODO: S3の署名付きURLを取得し、profileImageFileをアップロードする。
+    // TODO: アップロード後のS3 URLをUser.photoUrlへ保存するAPIを呼び出す。
+    setProfileNotice('S3アップロードAPIを接続すると保存できるようになります。');
+  };
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
@@ -145,20 +197,6 @@ const Header = () => {
   const initials = user?.name.trim().slice(0, 1).toUpperCase() || 'U';
   const navigationItems = [
     {
-      href: '/',
-      label: 'ホーム',
-      icon: FiHome,
-      isActive: pathname === '/',
-      requiresLogin: false,
-    },
-    {
-      href: '/search',
-      label: 'メンバー検索',
-      icon: FiUsers,
-      isActive: pathname.startsWith('/search'),
-      requiresLogin: false,
-    },
-    {
       href: '/post',
       label: '自分の記事',
       icon: FiFileText,
@@ -205,20 +243,30 @@ const Header = () => {
   );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#DDE4EC] bg-white/95 backdrop-blur">
-      <div className="flex h-16 w-full items-center gap-2 px-3 sm:gap-3 sm:px-4 lg:gap-4 lg:px-6">
-        <div className="flex shrink-0 items-center gap-4 xl:gap-6">
+    <>
+      <header className="sticky top-0 z-50 border-b border-[#DDE4EC] bg-white/95 backdrop-blur">
+      <div className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-4 lg:flex lg:h-16 lg:gap-4 lg:px-6 lg:py-0">
+        <div className="col-start-1 row-start-1 flex shrink-0 items-center gap-4 xl:gap-6">
           <Link
             href="/"
             className="w-fit shrink-0"
             aria-label="Knowledge Hub ホーム"
           >
+            {/* モバイルではロゴ全体を縮小せず、Compassアイコンを固定サイズで表示する。 */}
             <Image
-              src={'/compass-logo-full.png'}
+              src="/compass-logo-icon.png"
+              alt="Knowledge Hub"
+              width={44}
+              height={44}
+              className="size-10 shrink-0 sm:hidden"
+              loading="eager"
+            />
+            <Image
+              src="/compass-logo-full.png"
               alt="Knowledge Hub"
               width={150}
               height={50}
-              className="h-auto w-24 sm:w-32 lg:w-30 xl:w-36"
+              className="hidden h-auto w-32 sm:block lg:w-30 xl:w-36"
               loading="eager"
             />
           </Link>
@@ -228,7 +276,7 @@ const Header = () => {
 
         <form
           onSubmit={handleSearchMember}
-          className="relative ml-auto h-9 min-w-0 flex-1 sm:h-10 lg:max-w-52 xl:max-w-72"
+          className="relative col-span-3 row-start-2 h-10 min-w-0 w-full lg:col-auto lg:row-auto lg:ml-auto lg:max-w-72 xl:max-w-96"
         >
           <label htmlFor="header-search" className="sr-only">
             メンバーを検索
@@ -292,7 +340,7 @@ const Header = () => {
           )}
         </form>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <div className="col-start-3 row-start-1 flex shrink-0 items-center gap-2 sm:gap-3">
           {isCheckingSession ? (
             <div
               className="h-10 w-24 animate-pulse rounded-lg bg-[#EEF2F6]"
@@ -300,45 +348,60 @@ const Header = () => {
             />
           ) : user ? (
             <>
-              <Link
-                href="/post"
-                aria-label={`${user.name}の記事一覧`}
-                className="flex min-w-0 items-center gap-2 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F]"
-              >
-                <div className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#E8F0FA] text-sm font-bold text-[#254F8F] ring-2 ring-white shadow-sm">
-                  {user.photoUrl && !hasImageError ? (
-                    <Image
-                      src={user.photoUrl}
-                      alt={`${user.name}のプロフィール画像`}
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                      onError={() => setHasImageError(true)}
-                    />
-                  ) : (
-                    <span aria-hidden="true">{initials}</span>
-                  )}
-                </div>
-                <div className="hidden min-w-0 2xl:block">
-                  <p className="max-w-32 truncate text-sm font-bold text-[#344256]">
-                    {user.name}
-                  </p>
-                  <p className="max-w-40 truncate text-xs text-[#7B8899]">
-                    {user.email}
-                  </p>
-                </div>
-              </Link>
               <button
                 type="button"
                 onClick={handleSignOut}
                 disabled={isSigningOut}
-                className="flex h-10 items-center gap-2 rounded-lg border border-[#DDE4EC] bg-white px-3 text-sm font-semibold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#254F8F]/5 hover:text-[#254F8F] disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-[#DDE4EC] bg-white px-3 text-sm font-semibold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#254F8F]/5 hover:text-[#254F8F] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <FiLogOut aria-hidden="true" className="size-4" />
-                <span className="hidden xl:inline">
-                  {isSigningOut ? '処理中...' : 'サインアウト'}
-                </span>
+                <span>{isSigningOut ? '処理中...' : 'サインアウト'}</span>
               </button>
+              <div className="group relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileModalOpen(true);
+                    setProfileNotice('');
+                  }}
+                  aria-label={`${user.name}のプロフィール設定を開く`}
+                  className="flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F]"
+                >
+                  <span className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#E8F0FA] text-sm font-bold text-[#254F8F] ring-2 ring-white shadow-sm">
+                    {user.photoUrl && !hasImageError ? (
+                      <Image
+                        src={user.photoUrl}
+                        alt={`${user.name}のプロフィール画像`}
+                        fill
+                        sizes="40px"
+                        className="object-cover"
+                        onError={() => setHasImageError(true)}
+                      />
+                    ) : (
+                      <span aria-hidden="true">{initials}</span>
+                    )}
+                  </span>
+                </button>
+
+                <div className="pointer-events-none invisible absolute right-0 top-[calc(100%+0.65rem)] z-50 w-64 translate-y-1 rounded-xl border border-[#DDE4EC] bg-white p-4 opacity-0 shadow-[0_16px_40px_rgba(30,58,95,0.16)] transition duration-150 before:absolute before:-top-3 before:right-0 before:h-3 before:w-full before:content-[''] group-hover:pointer-events-auto group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#E8F0FA] text-sm font-bold text-[#254F8F]">
+                      {initials}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-[#344256]">
+                        {user.name}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-[#7B8899]">
+                        {user.email}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 border-t border-[#EEF1F4] pt-3 text-xs text-[#8A97A8]">
+                    クリックするとプロフィール設定を開きます
+                  </p>
+                </div>
+              </div>
             </>
           ) : (
             <Link
@@ -355,7 +418,116 @@ const Header = () => {
       <div className="overflow-x-auto border-t border-[#EEF1F4] px-3 py-1.5 sm:px-4 lg:hidden">
         <div className="min-w-max">{navigation}</div>
       </div>
-    </header>
+      </header>
+
+      <AnimatePresence>
+        {isProfileModalOpen && user && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-100 flex items-center justify-center bg-[#14263D]/45 px-4 backdrop-blur-sm"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setIsProfileModalOpen(false);
+              }
+            }}
+          >
+            <motion.section
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.24, ease: 'easeOut' }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="profile-modal-title"
+              className="w-full max-w-md rounded-2xl border border-[#DDE4EC] bg-white p-6 shadow-[0_24px_70px_rgba(20,38,61,0.24)]"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7B8899]">
+                    Profile
+                  </p>
+                  <h2
+                    id="profile-modal-title"
+                    className="mt-1 text-xl font-bold text-[#1E3A5F]"
+                  >
+                    プロフィール画像を設定
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsProfileModalOpen(false)}
+                  aria-label="プロフィール設定を閉じる"
+                  className="flex size-9 items-center justify-center rounded-lg text-[#7B8899] transition hover:bg-[#F1F4F7] hover:text-[#344256]"
+                >
+                  <FiX aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="mt-6 flex flex-col items-center">
+                <div className="relative flex size-28 items-center justify-center overflow-hidden rounded-full bg-[#E8F0FA] text-3xl font-bold text-[#254F8F] ring-4 ring-[#F3F6FA]">
+                  {profilePreviewUrl || (user.photoUrl && !hasImageError) ? (
+                    <Image
+                      src={profilePreviewUrl ?? user.photoUrl!}
+                      alt="プロフィール画像のプレビュー"
+                      fill
+                      sizes="112px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span aria-hidden="true">{initials}</span>
+                  )}
+                  <span className="absolute bottom-1 right-1 flex size-8 items-center justify-center rounded-full bg-[#254F8F] text-white shadow-md">
+                    <FiCamera aria-hidden="true" className="size-4" />
+                  </span>
+                </div>
+                <p className="mt-4 text-sm font-bold text-[#344256]">
+                  {user.name}
+                </p>
+                <p className="mt-1 text-xs text-[#7B8899]">{user.email}</p>
+              </div>
+
+              <input
+                ref={profileFileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleProfileImageChange}
+                className="sr-only"
+              />
+              <button
+                type="button"
+                onClick={() => profileFileInputRef.current?.click()}
+                className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#D8E0E9] bg-white text-sm font-bold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#F8FAFC] hover:text-[#254F8F]"
+              >
+                <FiUpload aria-hidden="true" />
+                画像を選択
+              </button>
+              <p className="mt-2 text-center text-xs text-[#8A97A8]">
+                PNG・JPEG・WebP、5MBまで
+              </p>
+
+              {profileNotice && (
+                <p className="mt-4 rounded-lg bg-[#F3F6F9] px-3 py-2 text-center text-xs font-semibold text-[#66758A]">
+                  {profileNotice}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSaveProfileImage}
+                disabled={!profileImageFile}
+                className="mt-5 h-11 w-full rounded-xl bg-[#254F8F] text-sm font-bold text-white transition hover:bg-[#1E3A5F] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                変更を保存
+              </button>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 

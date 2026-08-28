@@ -49,6 +49,24 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
             },
           },
         },
+        comments: {
+          where: { parentId: null },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            author: {
+              select: { id: true, name: true, photoUrl: true },
+            },
+          },
+        },
+        likes: {
+          where: { userId: currentUserId },
+          select: { userId: true },
+          take: 1,
+        },
+        _count: { select: { likes: true, comments: true } },
       },
     });
 
@@ -77,6 +95,8 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
       targetPost: {
         ...targetPost,
         canEdit,
+        likedByCurrentUser: targetPost.likes.length > 0,
+        likes: undefined,
       },
     });
   } catch (error) {

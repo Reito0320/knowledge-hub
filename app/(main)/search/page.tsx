@@ -12,8 +12,8 @@ import {
   FiMessageCircle,
   FiSearch,
   FiTag,
-  FiUser,
 } from 'react-icons/fi';
+import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 
 type SearchParamValue = string | string[] | undefined;
 
@@ -55,6 +55,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
   const member = getFirstSearchParam(params.member);
   const memberId = getFirstSearchParam(params.memberId);
   const tag = getFirstSearchParam(params.tag);
+  const isMemberDirectory = !keyword && !category && !tag && !member;
 
   const currentUserId = await getCurrentUser();
   if (!currentUserId) redirect('/login');
@@ -64,7 +65,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
 
   // Headerからメンバー名が送られた場合だけ、Userとその公開記事を取得する。
   // 下書きやアーカイブは投稿者以外へ公開しない。
-  const members = member
+  const members = member || isMemberDirectory
     ? await prisma.user.findMany({
         where: {
           // 検索結果にもログイン中の本人を含めない。
@@ -78,12 +79,14 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
               },
           ...(memberId
             ? {}
-            : {
+            : member
+              ? {
                 name: {
                   contains: member,
                   mode: 'insensitive' as const,
                 },
-              }),
+                }
+              : {}),
         },
         select: {
           id: true,
@@ -135,7 +138,6 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
         orderBy: {
           name: 'asc',
         },
-        take: 20,
       })
     : [];
 
@@ -153,10 +155,10 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
   };
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-[#F5F7FA] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F6F3] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
       <div className="mx-auto max-w-6xl">
         <header>
-          <div className="flex items-center gap-2 text-sm font-bold text-[#254F8F]">
+          <div className="flex items-center gap-2 text-sm font-bold text-[#B26936]">
             <FiSearch aria-hidden="true" />
             Member Search
           </div>
@@ -166,7 +168,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
           <p className="mt-2 text-sm text-[#7B8899]">
             {member
               ? `「${member}」に一致したメンバーと公開記事を表示しています。`
-              : 'Headerの検索欄へメンバー名を入力してください。'}
+              : '社内のメンバーと、それぞれが公開しているナレッジを一覧で確認できます。'}
           </p>
         </header>
 
@@ -202,19 +204,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
           </nav>
         )}
 
-        {!member ? (
-          <section className="mt-7 flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E0] bg-white px-6 text-center">
-            <span className="flex size-14 items-center justify-center rounded-2xl bg-[#E8F0FA] text-[#254F8F]">
-              <FiUser aria-hidden="true" className="size-6" />
-            </span>
-            <h2 className="mt-4 text-lg font-bold text-[#1E3A5F]">
-              メンバー名を入力してください
-            </h2>
-            <p className="mt-2 text-sm text-[#7B8899]">
-              名前の一部でも検索できます。
-            </p>
-          </section>
-        ) : members.length === 0 ? (
+        {members.length === 0 ? (
           <section className="mt-7 flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E0] bg-white px-6 text-center">
             <span className="flex size-14 items-center justify-center rounded-2xl bg-[#F1F4F7] text-[#7B8899]">
               <FiSearch aria-hidden="true" className="size-6" />
@@ -238,9 +228,9 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
               return (
                 <section
                   key={targetMember.id}
-                  className="overflow-hidden rounded-2xl border border-[#DDE4EC] bg-white shadow-[0_12px_30px_rgba(30,58,95,0.05)]"
+                  className="overflow-hidden rounded-2xl border border-[#E3DDD6] bg-white shadow-[0_12px_30px_rgba(72,48,30,0.05)]"
                 >
-                  <header className="border-b border-[#E8EDF2] bg-[#FAFBFC] p-5 sm:p-6">
+                  <header className="border-b border-[#EEE8E1] bg-[#FCFAF7] p-5 sm:p-6">
                     <div className="flex items-start gap-4">
                       <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#E8F0FA] text-base font-bold text-[#254F8F]">
                         {initials}
@@ -309,7 +299,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
                             {post.postTags.map(({ tag }) => (
                               <span
                                 key={tag.id}
-                                className="inline-flex items-center gap-1 rounded-md bg-[#F1F4F7] px-2 py-1 text-[11px] font-medium text-[#657287]"
+                                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium ${getTagColorClass(tag.name)}`}
                               >
                                 <FiTag aria-hidden="true" />
                                 {tag.name}
