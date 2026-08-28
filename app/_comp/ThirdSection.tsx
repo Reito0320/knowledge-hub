@@ -6,9 +6,9 @@ import { useState } from 'react';
 import { FiHeart, FiMessageCircle } from 'react-icons/fi';
 
 const ThirdSection = () => {
-  const [selectArticle, setSelectArticle] = useState<
-    'all' | 'skill' | 'work'
-  >();
+  const [selectArticle, setSelectArticle] = useState<'all' | 'skill' | 'work'>(
+    'all',
+  );
   const router = useRouter();
   const latestArticles = [
     {

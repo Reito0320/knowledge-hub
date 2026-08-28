@@ -117,7 +117,7 @@ const FirstSection = () => {
               variants={motionContainer.itemVariants}
             >
               <Link
-                href="/post"
+                href="/post/edit"
                 className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#254F8F] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1E3A5F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F]"
               >
                 <FiEdit3 aria-hidden="true" />

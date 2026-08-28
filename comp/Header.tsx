@@ -10,7 +10,7 @@ import {
   fetchDeleteSession,
   fetchGetSession,
   type SessionUser,
-} from '../api/auth/session/fetch';
+} from '@/app/api/auth/session/fetch';
 
 const Header = () => {
   const router = useRouter();
@@ -111,7 +111,10 @@ const Header = () => {
             />
           ) : user ? (
             <>
-              <div className="flex min-w-0 items-center gap-2">
+              <div
+                onClick={() => router.push('/post')}
+                className="flex min-w-0 items-center gap-2 cursor-pointer"
+              >
                 <div className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#E8F0FA] text-sm font-bold text-[#254F8F] ring-2 ring-white shadow-sm">
                   {user.photoUrl && !hasImageError ? (
                     <Image

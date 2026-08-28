@@ -9,13 +9,16 @@ import { prisma } from '../prisma';
  */
 export const getCurrentUser = async () => {
   const session = await getCookie('session');
-  if (!session) return null;
-
   const payload = await decrypt(session);
-  console.log('payload', payload);
-  if (!payload) return null;
-
-  // const user = await prisma.user.findUnique({
-  //   where
-  // })
+  if (!payload || typeof payload.userId !== 'string') return;
+  const id = payload.userId;
+  const user = await prisma.user.findUnique({
+    where: {
+      id: id,
+    },
+    select: {
+      id: true,
+    },
+  });
+  return user;
 };

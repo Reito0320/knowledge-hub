@@ -1,317 +1,254 @@
+import { getCurrentUser } from '@/lib/auth/get-current-user';
+import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import {
-  FiArrowLeft,
-  FiBold,
   FiBookOpen,
-  FiCheck,
-  FiChevronDown,
   FiClock,
-  FiCode,
   FiEdit3,
   FiEye,
-  FiHash,
-  FiImage,
-  FiInfo,
-  FiItalic,
-  FiLink,
-  FiList,
-  FiSave,
-  FiSend,
+  FiHeart,
+  FiMessageCircle,
+  FiPlus,
   FiTag,
-  FiType,
-  FiX,
 } from 'react-icons/fi';
 
-const editorTools = [
-  { label: '見出し', icon: FiType },
-  { label: '太字', icon: FiBold },
-  { label: '斜体', icon: FiItalic },
-  { label: 'リスト', icon: FiList },
-  { label: 'リンク', icon: FiLink },
-  { label: '画像', icon: FiImage },
-  { label: 'コード', icon: FiCode },
-];
+const statusStyles = {
+  DRAFT: {
+    label: '下書き',
+    className: 'bg-[#EEF1F4] text-[#647286]',
+  },
+  PUBLISHED: {
+    label: '公開中',
+    className: 'bg-[#E5F3EB] text-[#39745A]',
+  },
+  ARCHIVED: {
+    label: 'アーカイブ',
+    className: 'bg-[#F7EDEA] text-[#9A5A4B]',
+  },
+} as const;
 
-const PostPage = () => {
+const categoryLabels = {
+  TECH: '技術ブログ',
+  BUSINESS: '業務・カルチャー',
+} as const;
+
+const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+
+// ログインユーザーが投稿した記事だけを表示する管理ページ。
+const PostPage = async () => {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    redirect('/login');
+  }
+
+  const posts = await prisma.post.findMany({
+    where: {
+      authorId: currentUser.id,
+    },
+    select: {
+      id: true,
+      title: true,
+      excerpt: true,
+      category: true,
+      status: true,
+      viewCount: true,
+      publishedAt: true,
+      updatedAt: true,
+      postTags: {
+        select: {
+          tag: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          likes: true,
+          comments: true,
+        },
+      },
+    },
+    orderBy: {
+      updatedAt: 'desc',
+    },
+  });
+
+  const publishedCount = posts.filter(
+    (post) => post.status === 'PUBLISHED',
+  ).length;
+  const draftCount = posts.filter((post) => post.status === 'DRAFT').length;
+  const totalLikes = posts.reduce(
+    (total, post) => total + post._count.likes,
+    0,
+  );
+
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-[#F5F7FA] px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
-      <form className="mx-auto max-w-345">
-        {/* TODO: usePostEditorまたはform stateで入力値・下書き状態を管理する */}
-        <header className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F5F7FA] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+      <div className="mx-auto max-w-6xl">
+        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[#66758A] transition hover:text-[#254F8F]"
-            >
-              <FiArrowLeft aria-hidden="true" />
-              ホームへ戻る
-            </Link>
-            <div className="mt-4 flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-xl bg-[#E8F0FA] text-[#254F8F]">
-                <FiEdit3 aria-hidden="true" className="size-5" />
-              </span>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-[#1E3A5F] sm:text-3xl">
-                  ナレッジを投稿
-                </h1>
-                <p className="mt-1 text-sm text-[#7B8899]">
-                  あなたの経験を、チームみんなの知識に変えましょう。
-                </p>
-              </div>
+            <div className="flex items-center gap-2 text-sm font-bold text-[#254F8F]">
+              <FiBookOpen aria-hidden="true" />
+              My Knowledge
             </div>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#1E3A5F] sm:text-3xl">
+              自分の記事
+            </h1>
+            <p className="mt-2 text-sm text-[#7B8899]">
+              投稿したナレッジと下書きをまとめて管理できます。
+            </p>
           </div>
-
-          <div className="flex items-center gap-3 sm:justify-end">
-            {/* TODO: 下書き保存APIを接続し、保存中・保存済みの状態を表示する */}
-            <button
-              type="button"
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#D8E0E9] bg-white px-5 text-sm font-bold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#F8FAFC] sm:flex-none"
-            >
-              <FiSave aria-hidden="true" />
-              下書き保存
-            </button>
-            {/* TODO: 入力検証後に記事作成APIを呼び、作成した記事詳細へ遷移する */}
-            <button
-              type="button"
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#254F8F] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1E3A5F] sm:flex-none"
-            >
-              <FiSend aria-hidden="true" />
-              公開する
-            </button>
-          </div>
+          <Link
+            href="/post/edit"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#254F8F] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1E3A5F]"
+          >
+            <FiPlus aria-hidden="true" />
+            新しい記事を書く
+          </Link>
         </header>
 
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <section className="min-w-0 overflow-hidden rounded-2xl border border-[#DDE4EC] bg-white shadow-[0_12px_35px_rgba(30,58,95,0.05)]">
-            <div className="space-y-6 border-b border-[#E8EDF2] p-5 sm:p-7">
-              <div>
-                <label
-                  htmlFor="post-title"
-                  className="text-sm font-bold text-[#344256]"
-                >
-                  タイトル<span className="ml-1 text-[#C15E67]">*</span>
-                </label>
-                <input
-                  id="post-title"
-                  name="title"
-                  type="text"
-                  maxLength={100}
-                  placeholder="記事の内容が伝わるタイトルを入力"
-                  className="mt-2 h-13 w-full rounded-xl border border-[#DDE4EC] bg-[#FBFCFD] px-4 text-base font-semibold text-[#26384D] outline-none transition placeholder:font-normal placeholder:text-[#A2ADBA] focus:border-[#254F8F]/50 focus:bg-white focus:ring-3 focus:ring-[#254F8F]/8 sm:text-lg"
-                />
-                <p className="mt-2 text-right text-xs text-[#98A4B3]">
-                  0 / 100
-                </p>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="post-excerpt"
-                  className="text-sm font-bold text-[#344256]"
-                >
-                  記事の概要
-                  <span className="ml-2 text-xs font-normal text-[#8A97A8]">
-                    任意
-                  </span>
-                </label>
-                <textarea
-                  id="post-excerpt"
-                  name="excerpt"
-                  rows={2}
-                  maxLength={160}
-                  placeholder="一覧画面に表示する短い説明を入力してください"
-                  className="mt-2 w-full resize-none rounded-xl border border-[#DDE4EC] bg-[#FBFCFD] px-4 py-3 text-sm leading-6 text-[#344256] outline-none transition placeholder:text-[#A2ADBA] focus:border-[#254F8F]/50 focus:bg-white focus:ring-3 focus:ring-[#254F8F]/8"
-                />
-                <p className="mt-1 text-right text-xs text-[#98A4B3]">
-                  0 / 160
-                </p>
-              </div>
+        <section className="mt-7 grid grid-cols-3 gap-3 sm:max-w-xl sm:gap-4">
+          {[
+            { label: 'すべて', value: posts.length },
+            { label: '公開中', value: publishedCount },
+            { label: '下書き', value: draftCount },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="rounded-2xl border border-[#DDE4EC] bg-white px-4 py-4 sm:px-5"
+            >
+              <p className="text-xs font-semibold text-[#7B8899]">
+                {item.label}
+              </p>
+              <p className="mt-1 text-2xl font-bold text-[#1E3A5F]">
+                {item.value}
+              </p>
             </div>
+          ))}
+        </section>
 
-            <div className="flex items-center justify-between border-b border-[#DDE4EC] bg-[#F8FAFC] px-4 sm:px-6">
-              <div className="flex h-14 items-end gap-1">
-                {/* TODO: editorMode stateを追加してMarkdown編集とプレビューを切り替える */}
-                <button
-                  type="button"
-                  className="flex h-12 items-center gap-2 border-b-2 border-[#254F8F] px-3 text-sm font-bold text-[#254F8F]"
-                >
-                  <FiEdit3 aria-hidden="true" />
-                  編集
-                </button>
-                <button
-                  type="button"
-                  className="flex h-12 items-center gap-2 border-b-2 border-transparent px-3 text-sm font-semibold text-[#7B8899] transition hover:text-[#254F8F]"
-                >
-                  <FiEye aria-hidden="true" />
-                  プレビュー
-                </button>
-              </div>
-              <span className="hidden items-center gap-1.5 text-xs text-[#8A97A8] sm:flex">
-                <FiClock aria-hidden="true" />
-                未保存
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1 border-b border-[#E8EDF2] px-4 py-2.5 sm:px-6">
-              {editorTools.map(({ label, icon: Icon }) => (
-                <button
-                  key={label}
-                  type="button"
-                  title={label}
-                  aria-label={label}
-                  className="flex size-9 items-center justify-center rounded-lg text-[#66758A] transition hover:bg-[#E8F0FA] hover:text-[#254F8F]"
-                >
-                  <Icon aria-hidden="true" />
-                </button>
-              ))}
-              <span className="ml-auto hidden rounded-md bg-[#EEF2F6] px-2 py-1 font-mono text-[10px] font-semibold text-[#788698] sm:inline">
-                Markdown
-              </span>
-            </div>
-
-            <div className="relative">
-              <label htmlFor="post-content" className="sr-only">
-                記事本文
-              </label>
-              <textarea
-                id="post-content"
-                name="content"
-                spellCheck="false"
-                placeholder={`## 見出し\n\n共有したい知識や経験をMarkdownで書いてみましょう。\n\n- 背景や困っていたこと\n- 試したこと\n- 解決方法と学び`}
-                className="min-h-130 w-full resize-y bg-white px-5 py-6 pb-16 font-mono text-sm leading-7 text-[#344256] outline-none placeholder:text-[#A7B1BE] sm:px-7 lg:min-h-147.5"
-              />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-[#EEF1F4] bg-white/95 px-5 py-3 text-xs text-[#8A97A8] backdrop-blur sm:px-7">
-                <span>Markdown記法に対応しています</span>
-                <span>0文字</span>
-              </div>
-            </div>
+        {posts.length === 0 ? (
+          <section className="mt-7 flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E0] bg-white px-6 text-center">
+            <span className="flex size-14 items-center justify-center rounded-2xl bg-[#E8F0FA] text-[#254F8F]">
+              <FiEdit3 aria-hidden="true" className="size-6" />
+            </span>
+            <h2 className="mt-5 text-lg font-bold text-[#1E3A5F]">
+              まだ記事がありません
+            </h2>
+            <p className="mt-2 max-w-md text-sm leading-6 text-[#7B8899]">
+              日々の業務で得た知識や、誰かに共有したい解決方法を最初の記事にしてみましょう。
+            </p>
+            <Link
+              href="/post/edit"
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#254F8F] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#1E3A5F]"
+            >
+              <FiPlus aria-hidden="true" />
+              記事を書く
+            </Link>
           </section>
-
-          <aside className="space-y-5 xl:sticky xl:top-22">
-            <section className="rounded-2xl border border-[#DDE4EC] bg-white p-5">
-              <div className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F]">
-                <FiBookOpen aria-hidden="true" className="text-[#254F8F]" />
-                記事のカテゴリ
-              </div>
-              <p className="mt-1 text-xs leading-5 text-[#8A97A8]">
-                内容に最も近いカテゴリを選択してください。
-              </p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-[#254F8F] bg-[#EEF4FB] p-4">
-                  <input
-                    type="radio"
-                    name="category"
-                    value="TECH"
-                    defaultChecked
-                    className="mt-1 accent-[#254F8F]"
-                  />
-                  <span>
-                    <span className="block text-sm font-bold text-[#254F8F]">
-                      技術ブログ
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-[#6E7F94]">
-                      開発・設計・インフラなど
-                    </span>
-                  </span>
-                </label>
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#DDE4EC] bg-white p-4 transition hover:border-[#B8C4D2]">
-                  <input
-                    type="radio"
-                    name="category"
-                    value="BUSINESS"
-                    className="mt-1 accent-[#995D31]"
-                  />
-                  <span>
-                    <span className="block text-sm font-bold text-[#6A4A32]">
-                      業務・カルチャー
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-[#7B8899]">
-                      仕事術・制度・社内ノウハウ
-                    </span>
-                  </span>
-                </label>
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-[#DDE4EC] bg-white p-5">
-              <label
-                htmlFor="post-tags"
-                className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F]"
-              >
-                <FiTag aria-hidden="true" className="text-[#254F8F]" />
-                タグ
-              </label>
-              <p className="mt-1 text-xs leading-5 text-[#8A97A8]">
-                検索されやすいキーワードを5個まで設定できます。
-              </p>
-              <div className="relative mt-4">
-                <FiHash
-                  aria-hidden="true"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A97A8]"
-                />
-                <input
-                  id="post-tags"
-                  name="tags"
-                  type="text"
-                  placeholder="タグを入力してEnter"
-                  className="h-11 w-full rounded-xl border border-[#DDE4EC] bg-[#FBFCFD] pl-9 pr-10 text-sm text-[#344256] outline-none transition placeholder:text-[#A2ADBA] focus:border-[#254F8F]/50 focus:bg-white focus:ring-3 focus:ring-[#254F8F]/8"
-                />
-                <FiChevronDown
-                  aria-hidden="true"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A97A8]"
-                />
-              </div>
-              {/* TODO: tag stateと候補検索APIを追加し、選択・削除できるようにする */}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {['Next.js', '認証'].map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#E8F0FA] px-2.5 py-1.5 text-xs font-semibold text-[#254F8F]"
-                  >
-                    #{tag}
-                    <button
-                      type="button"
-                      aria-label={`${tag}タグを削除`}
-                      className="rounded text-[#6E87A7] hover:text-[#1E3A5F]"
-                    >
-                      <FiX aria-hidden="true" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-[#DDE4EC] bg-white p-5">
-              <div className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F]">
-                <FiCheck aria-hidden="true" className="text-[#39745A]" />
-                公開前のチェック
-              </div>
-              <ul className="mt-4 space-y-3 text-xs leading-5 text-[#66758A]">
-                {[
-                  '個人情報や機密情報が含まれていない',
-                  'タイトルから内容を想像できる',
-                  '適切なカテゴリとタグを設定した',
-                ].map((item) => (
-                  <li key={item} className="flex gap-2.5">
-                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#9AA7B7]" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <div className="flex gap-3 rounded-2xl border border-[#D8E5F2] bg-[#EEF5FC] p-4">
-              <FiInfo
-                aria-hidden="true"
-                className="mt-0.5 shrink-0 text-[#254F8F]"
-              />
-              <p className="text-xs leading-5 text-[#5D7189]">
-                完璧にまとめなくても大丈夫です。まずは下書きに保存して、少しずつ育てていきましょう。
+        ) : (
+          <section className="mt-7 space-y-4" aria-label="投稿した記事">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-[#1E3A5F]">記事一覧</h2>
+              <p className="text-xs text-[#8A97A8]">
+                合計いいね {totalLikes}件
               </p>
             </div>
-          </aside>
-        </div>
-      </form>
+
+            {posts.map((post) => {
+              const status = statusStyles[post.status];
+
+              return (
+                <article
+                  key={post.id}
+                  className="group rounded-2xl border border-[#DDE4EC] bg-white p-5 transition hover:border-[#254F8F]/25 hover:shadow-[0_12px_30px_rgba(30,58,95,0.07)] sm:p-6"
+                >
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${status.className}`}
+                        >
+                          {status.label}
+                        </span>
+                        <span className="text-xs font-semibold text-[#6C7A8C]">
+                          {categoryLabels[post.category]}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-[#98A4B3]">
+                          <FiClock aria-hidden="true" />
+                          {dateFormatter.format(post.updatedAt)} 更新
+                        </span>
+                      </div>
+
+                      <h3 className="mt-3 text-lg font-bold leading-7 text-[#1E3A5F] group-hover:text-[#254F8F]">
+                        <Link href={`/post/${post.id}`}>
+                          {post.title.trim() || '無題の記事'}
+                        </Link>
+                      </h3>
+                      {post.excerpt && (
+                        <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#66758A]">
+                          {post.excerpt}
+                        </p>
+                      )}
+
+                      {post.postTags.length > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {post.postTags.map(({ tag }) => (
+                            <span
+                              key={tag.id}
+                              className="inline-flex items-center gap-1 rounded-md bg-[#F1F4F7] px-2 py-1 text-[11px] font-medium text-[#657287]"
+                            >
+                              <FiTag aria-hidden="true" />
+                              {tag.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <Link
+                      href={`/post/edit?postId=${post.id}`}
+                      className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#DDE4EC] px-4 text-sm font-bold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#EEF4FB] hover:text-[#254F8F]"
+                    >
+                      <FiEdit3 aria-hidden="true" />
+                      編集する
+                    </Link>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center gap-5 border-t border-[#EEF1F4] pt-4 text-xs font-semibold text-[#7B8899]">
+                    <span className="flex items-center gap-1.5">
+                      <FiEye aria-hidden="true" />
+                      {post.viewCount}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <FiHeart aria-hidden="true" />
+                      {post._count.likes}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <FiMessageCircle aria-hidden="true" />
+                      {post._count.comments}
+                    </span>
+                    {post.publishedAt && (
+                      <span className="ml-auto">
+                        {dateFormatter.format(post.publishedAt)} 公開
+                      </span>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        )}
+      </div>
     </main>
   );
 };

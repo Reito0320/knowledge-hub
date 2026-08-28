@@ -99,7 +99,6 @@ export const POST = async (req: NextRequest) => {
         { status: 401 },
       );
 
-    /* 再実行されても重複しないようにuserを作成・更新 */
     const user = await prisma.user.findUnique({
       where: {
         id: payload.sub,

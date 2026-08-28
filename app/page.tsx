@@ -4,8 +4,6 @@ import { getCurrentUser } from '@/lib/auth/get-current-user';
 import ThirdSection from './_comp/ThirdSection';
 
 export default async function Home() {
-  const result = await getCurrentUser();
-  console.log(result);
   return (
     <main className="min-h-screen bg-[#F5F7FA] text-[#1E2A3A]">
       <FirstSection />
