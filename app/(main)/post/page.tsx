@@ -47,12 +47,19 @@ const PostPage = () => {
   const router = useRouter();
   const [posts, setPosts] = useState<PostListItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   useEffect(() => {
     const getPostList = async () => {
-      setIsLoading(true);
-      const data = await fetchGETPostData();
-      setPosts(data);
-      setIsLoading(false);
+      try {
+        setIsLoading(true);
+        const data = await fetchGETPostData();
+        setPosts(data);
+      } catch (error) {
+        console.error(error);
+        setErrorMessage('読み込みに失敗しました。');
+      } finally {
+        setIsLoading(false);
+      }
     };
     void getPostList();
   }, []);
@@ -125,6 +132,8 @@ const PostPage = () => {
               記事を書く
             </Link>
           </section>
+        ) : errorMessage ? (
+          <div>{errorMessage}</div>
         ) : (
           <section className="mt-7 space-y-4" aria-label="投稿した記事">
             <div className="flex items-center justify-between">
