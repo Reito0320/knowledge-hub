@@ -138,7 +138,7 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
               </span>
             </div>
 
-            <h1 className="mt-5 text-2xl font-bold leading-tight tracking-[-0.025em] text-[#1E3A5F] sm:text-3xl lg:text-4xl">
+            <h1 className="mt-5 text-2xl font-bold leading-tight tracking-tight text-[#1E3A5F] sm:text-3xl lg:text-4xl">
               {postData.title.trim() || '無題の記事'}
             </h1>
             {postData.excerpt && (
@@ -173,7 +173,7 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
               </div>
 
               {/* TODO: Markdownライブラリ導入後、contentをHTMLへ変換して表示する */}
-              <div className="whitespace-pre-wrap break-words text-[15px] leading-8 text-[#344256] sm:text-base">
+              <div className="whitespace-pre-wrap wrap-break-words text-[15px] leading-8 text-[#344256] sm:text-base">
                 {postData.content}
               </div>
             </div>
