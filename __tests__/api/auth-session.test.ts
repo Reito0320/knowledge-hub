@@ -12,8 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 /* 最初にmocksを定義しておくことで、vi.mockの中でのホイスティングによる変数errorをなくせる。 */
 const mocks = vi.hoisted(() => ({
   verifyToken: vi.fn(),
-  getCognitoUser: vi.fn(),
-  upsertUser: vi.fn(),
+  findUniqueUser: vi.fn(),
   createSession: vi.fn(),
   deleteCookie: vi.fn(),
 }));
@@ -22,14 +21,10 @@ vi.mock('@/lib/amplify/cognito-verify-access-token', () => ({
   verifyCognitoAccessToken: mocks.verifyToken,
 }));
 
-vi.mock('@/lib/amplify/get-cognito-user', () => ({
-  getCognitoUser: mocks.getCognitoUser,
-}));
-
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     user: {
-      upsert: mocks.upsertUser,
+      findUnique: mocks.findUniqueUser,
     },
   },
 }));
@@ -46,18 +41,13 @@ import { POST } from '@/app/api/auth/session/route';
 
 describe('POST /api/auth/session', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+
     mocks.verifyToken.mockResolvedValue({
       sub: 'cognito-sub-123',
     });
 
-    mocks.getCognitoUser.mockResolvedValue({
-      sub: 'cognito-sub-123',
-      email: 'test@example.com',
-      name: 'テストユーザー',
-      emailVerified: true,
-    });
-
-    mocks.upsertUser.mockResolvedValue({
+    mocks.findUniqueUser.mockResolvedValue({
       id: 'cognito-sub-123',
     });
 
@@ -76,10 +66,10 @@ describe('POST /api/auth/session', () => {
 
     expect(response.status).toBe(401);
     expect(body.message).toBe('認証トークンがありませんでした。');
-    expect(mocks.upsertUser).not.toHaveBeenCalled();
+    expect(mocks.findUniqueUser).not.toHaveBeenCalled();
   });
 
-  it('認証成功時にUserをupsertしてSessionを作る', async () => {
+  it('認証成功時にDBのUserを確認してSessionを作る', async () => {
     const request = new NextRequest('http://localhost/api/auth/session', {
       method: 'POST',
       headers: {
@@ -94,17 +84,15 @@ describe('POST /api/auth/session', () => {
     expect(body.message).toBe('ログインしました。');
 
     expect(mocks.verifyToken).toHaveBeenCalledWith('test-access-token');
-    expect(mocks.upsertUser).toHaveBeenCalledOnce();
+    expect(mocks.findUniqueUser).toHaveBeenCalledWith({
+      where: { id: 'cognito-sub-123' },
+      select: { id: true },
+    });
     expect(mocks.createSession).toHaveBeenCalledWith('cognito-sub-123');
   });
 
-  it('Cognitoのnameがなければ403を返す', async () => {
-    mocks.getCognitoUser.mockResolvedValue({
-      sub: 'cognito-sub-123',
-      email: 'test@example.com',
-      name: undefined,
-      emailVerified: true,
-    });
+  it('DBにUserが存在しなければ403を返す', async () => {
+    mocks.findUniqueUser.mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost/api/auth/session', {
       method: 'POST',
@@ -116,7 +104,7 @@ describe('POST /api/auth/session', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(403);
-    expect(mocks.upsertUser).not.toHaveBeenCalled();
+    expect(mocks.findUniqueUser).toHaveBeenCalledOnce();
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 });
