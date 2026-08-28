@@ -15,16 +15,37 @@ export const POST = async (req: NextRequest) => {
         { status: 401 },
       );
 
-    const { title, excerpt, content, category, tags } = await req.json();
+    const { title, excerpt, content, category, tags, publish } =
+      await req.json();
+    const shouldPublish = publish === true;
+
+    if (
+      typeof title !== 'string' ||
+      typeof content !== 'string' ||
+      (category !== 'TECH' && category !== 'BUSINESS') ||
+      !Array.isArray(tags)
+    )
+      return NextResponse.json(
+        { message: '記事の入力値が正しくありません。' },
+        { status: 400 },
+      );
+
+    if (shouldPublish && (!title.trim() || !content.trim()))
+      return NextResponse.json(
+        { message: '公開するにはタイトルと本文が必要です。' },
+        { status: 400 },
+      );
+
     const postTagData = createPostTagData(tags);
 
-    await prisma.post.create({
+    const post = await prisma.post.create({
       data: {
-        title,
-        excerpt,
+        title: title.trim(),
+        excerpt: typeof excerpt === 'string' ? excerpt.trim() || null : null,
         content,
         category,
-        status: 'DRAFT',
+        status: shouldPublish ? 'PUBLISHED' : 'DRAFT',
+        publishedAt: shouldPublish ? new Date() : null,
         authorId: currentUserId,
         postTags: {
           create: postTagData,
@@ -38,9 +59,12 @@ export const POST = async (req: NextRequest) => {
 
     return NextResponse.json(
       {
-        message: 'postの作成が完了しました。',
+        message: shouldPublish
+          ? '記事を公開しました。'
+          : '下書きを保存しました。',
+        postId: post.id,
       },
-      { status: 200 },
+      { status: 201 },
     );
   } catch (error) {
     console.error(error);

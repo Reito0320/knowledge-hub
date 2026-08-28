@@ -12,7 +12,15 @@ import {
 } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 
-const FirstSection = () => {
+type FirstSectionProps = {
+  stats: {
+    publishedPostCount: number;
+    postingMemberCount: number;
+    departmentCount: number;
+  };
+};
+
+const FirstSection = ({ stats }: FirstSectionProps) => {
   const router = useRouter();
   const [knowledgeSearch, setKnowledgeSearch] = useState<string>('');
 
@@ -89,9 +97,21 @@ const FirstSection = () => {
               className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-3"
             >
               {[
-                { icon: FiBookOpen, value: '326', label: '公開ナレッジ' },
-                { icon: FiUsers, value: '48', label: '投稿メンバー' },
-                { icon: FiBriefcase, value: '18', label: '参加部署' },
+                {
+                  icon: FiBookOpen,
+                  value: stats.publishedPostCount,
+                  label: '公開ナレッジ',
+                },
+                {
+                  icon: FiUsers,
+                  value: stats.postingMemberCount,
+                  label: '投稿メンバー',
+                },
+                {
+                  icon: FiBriefcase,
+                  value: stats.departmentCount,
+                  label: '参加部署',
+                },
               ].map(({ icon: Icon, value, label }) => (
                 <motion.div
                   variants={motionContainer.itemVariants}

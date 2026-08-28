@@ -1,4 +1,4 @@
-type PostData = {
+export type PostData = {
   title?: string;
   excerpt?: string;
   content?: string;
@@ -34,16 +34,24 @@ type GetPostDataResponse = {
   data: PostListItem[];
 };
 
-export const fetchPostCreate = async (data: PostData) => {
+type SavePostResponse = {
+  message: string;
+  postId: string;
+};
+
+export const fetchPostCreate = async (
+  data: PostData,
+  options?: { publish?: boolean },
+) => {
   const res = await fetch('/api/post', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, publish: options?.publish ?? false }),
   });
   if (!res.ok) throw new Error('記事の保存の通信に失敗しています。');
 
-  const { message } = await res.json();
-  return message;
+  const response: SavePostResponse = await res.json();
+  return response;
 };
 
 export const fetchGETPostData = async (): Promise<PostListItem[]> => {

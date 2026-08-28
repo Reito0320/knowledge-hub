@@ -46,17 +46,18 @@ export const fetchGetTargetPost = async (
 export const fetchUpdatePost = async (
   postId: string,
   data: UpdatePostData,
+  options?: { publish?: boolean },
 ) => {
   const res = await fetch('/api/post/' + postId, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, publish: options?.publish ?? false }),
   });
 
   if (!res.ok) throw new Error('記事更新の通信に失敗しています。');
 
-  const { message }: { message: string } = await res.json();
-  return message;
+  const response: { message: string; postId: string } = await res.json();
+  return response;
 };

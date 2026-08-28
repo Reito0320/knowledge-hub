@@ -4,6 +4,7 @@ import { fetchPostCreate } from '@/app/api/post/fetch';
 import { fetchUpdatePost } from '@/app/api/post/[postId]/fetch';
 import { useRouter } from 'next/navigation';
 import { FiArrowLeft, FiEdit3, FiSave, FiSend } from 'react-icons/fi';
+import { useState } from 'react';
 
 type FirstSectionProps = {
   mode: 'create' | 'edit';
@@ -13,17 +14,39 @@ type FirstSectionProps = {
 
 const FirstSection = ({ mode, postId, storageKey }: FirstSectionProps) => {
   const router = useRouter();
-  const handleSavebutton = async () => {
-    const localData = localStorage.getItem(storageKey);
-    const cashData = localData ? JSON.parse(localData) : null;
-    if (!cashData) return;
+  const [isSaving, setIsSaving] = useState(false);
+  const [notice, setNotice] = useState<string>('');
 
-    const message =
-      mode === 'edit' && postId
-        ? await fetchUpdatePost(postId, cashData)
-        : await fetchPostCreate(cashData);
+  const savePost = async (publish: boolean) => {
+    if (isSaving) return;
 
-    console.log(message);
+    try {
+      setIsSaving(true);
+      setNotice('');
+      const localData = localStorage.getItem(storageKey);
+      const cashData = localData ? JSON.parse(localData) : null;
+      if (!cashData) throw new Error('記事の入力値を取得できませんでした。');
+
+      let response: { message: string; postId: string };
+
+      if (mode === 'edit' && postId) {
+        response = await fetchUpdatePost(postId, cashData, { publish });
+      } else {
+        response = await fetchPostCreate(cashData, { publish });
+      }
+
+      localStorage.removeItem(storageKey);
+      setNotice(response.message);
+      router.push('/post/' + response.postId);
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      setNotice(
+        error instanceof Error ? error.message : '記事を保存できませんでした。',
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
   return (
     <header className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -53,24 +76,30 @@ const FirstSection = ({ mode, postId, storageKey }: FirstSectionProps) => {
       </div>
 
       <div className="flex items-center gap-3 sm:justify-end">
-        {/* TODO: 下書き保存APIを接続し、保存中・保存済みの状態を表示する */}
         <button
           type="button"
-          onClick={handleSavebutton}
+          onClick={() => savePost(false)}
+          disabled={isSaving}
           className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#D8E0E9] bg-white px-5 text-sm font-bold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#F8FAFC] sm:flex-none"
         >
           <FiSave aria-hidden="true" />
-          下書き保存
+          {isSaving ? '保存中...' : '下書き保存'}
         </button>
-        {/* TODO: 入力検証後に記事作成APIを呼び、作成した記事詳細へ遷移する */}
         <button
           type="button"
+          onClick={() => savePost(true)}
+          disabled={isSaving}
           className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#254F8F] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1E3A5F] sm:flex-none"
         >
           <FiSend aria-hidden="true" />
-          公開する
+          {isSaving ? '処理中...' : '公開する'}
         </button>
       </div>
+      {notice && (
+        <p className="text-sm font-semibold text-[#66758A] lg:basis-full lg:text-right">
+          {notice}
+        </p>
+      )}
     </header>
   );
 };

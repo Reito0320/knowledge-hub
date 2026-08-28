@@ -24,6 +24,10 @@ const EditPostPage = ({ params }: EditPostPageProps) => {
 
   useEffect(() => {
     const loadPost = async () => {
+      setIsLoading(true);
+      setPost(null);
+      setErrorMessage(null);
+
       try {
         const targetPost = await fetchGetTargetPost(postId);
 
@@ -77,6 +81,7 @@ const EditPostPage = ({ params }: EditPostPageProps) => {
 
   return (
     <PostEditor
+      key={postId}
       mode="edit"
       postId={postId}
       initialData={{

@@ -102,7 +102,26 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
       );
 
     const { postId } = await params;
-    const { title, excerpt, content, category, tags } = await req.json();
+    const { title, excerpt, content, category, tags, publish } =
+      await req.json();
+    const shouldPublish = publish === true;
+
+    if (
+      typeof title !== 'string' ||
+      typeof content !== 'string' ||
+      (category !== 'TECH' && category !== 'BUSINESS') ||
+      !Array.isArray(tags)
+    )
+      return NextResponse.json(
+        { message: '記事の入力値が正しくありません。' },
+        { status: 400 },
+      );
+
+    if (shouldPublish && (!title.trim() || !content.trim()))
+      return NextResponse.json(
+        { message: '公開するにはタイトルと本文が必要です。' },
+        { status: 400 },
+      );
 
     const targetPost = await prisma.post.findFirst({
       where: {
@@ -111,6 +130,7 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
       },
       select: {
         id: true,
+        publishedAt: true,
       },
     });
 
@@ -127,10 +147,16 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
         id: targetPost.id,
       },
       data: {
-        title,
-        excerpt,
+        title: title.trim(),
+        excerpt: typeof excerpt === 'string' ? excerpt.trim() || null : null,
         content,
         category,
+        ...(shouldPublish
+          ? {
+              status: 'PUBLISHED' as const,
+              publishedAt: targetPost.publishedAt ?? new Date(),
+            }
+          : {}),
         postTags: {
           deleteMany: {},
           create: postTagData,
@@ -139,7 +165,10 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
     });
 
     return NextResponse.json({
-      message: '記事を更新しました。',
+      message: shouldPublish
+        ? '記事を公開しました。'
+        : '記事を更新しました。',
+      postId: targetPost.id,
     });
   } catch (error) {
     console.error(error);

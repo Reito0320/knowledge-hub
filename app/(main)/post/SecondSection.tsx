@@ -1,7 +1,7 @@
 'use client';
 
 type TagSuggestion = {
-  // DB連携後はTagモデルから受け取る値。現在は仮データで使用する。
+  // Tag候補APIから受け取る既存Tagの値。
   id: string;
   name: string;
   slug: string;
@@ -42,21 +42,6 @@ import {
   FiX,
 } from 'react-icons/fi';
 
-// サジェスト表示を確認するための仮タグ一覧。現時点ではDB通信を行わない。
-// TODO: タグ検索APIができたら、この配列をAPIのレスポンスへ置き換える。
-const existingTags: TagSuggestion[] = [
-  { id: 'tag-nextjs', name: 'Next.js', slug: 'nextjs' },
-  { id: 'tag-react', name: 'React', slug: 'react' },
-  { id: 'tag-typescript', name: 'TypeScript', slug: 'typescript' },
-  { id: 'tag-prisma', name: 'Prisma', slug: 'prisma' },
-  { id: 'tag-cognito', name: 'Cognito', slug: 'cognito' },
-  { id: 'tag-aws', name: 'AWS', slug: 'aws' },
-  { id: 'tag-neon', name: 'Neon', slug: 'neon' },
-  { id: 'tag-auth', name: '認証', slug: 'authentication' },
-  { id: 'tag-design', name: '設計', slug: 'design' },
-  { id: 'tag-onboarding', name: 'オンボーディング', slug: 'onboarding' },
-];
-
 // 前後の空白・全角半角・大文字小文字の違いを吸収して比較しやすくする。
 // 例: 「 ＮＥＸＴ.js 」と「next.js」を同じ文字列として扱える。
 const normalizeTagName = (name: string) =>
@@ -83,6 +68,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     initialData?.category ?? 'TECH',
   );
   const [tagName, setTagName] = useState<string>('');
+  const [tagSuggestList, setTagSuggestList] = useState<TagSuggestion[]>([]);
   const [selectedTagList, setSelectedTagList] = useState<SelectedTag[]>(
     initialData?.tags ?? [],
   );
@@ -90,21 +76,41 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
   // 現在の入力値も正規化し、仮タグ一覧との部分一致検索に使用する。
   const normalizedTagName = normalizeTagName(tagName);
 
-  // 入力文字を含む既存タグだけをサジェストとして抽出する。
-  // すでに選択したタグは候補から外し、表示件数は最大5件に制限する。
-  const tagSuggestList = normalizedTagName
-    ? existingTags
-        .filter(
-          (tag) =>
-            normalizeTagName(tag.name).includes(normalizedTagName) &&
-            !selectedTagList.some(
-              (selectedTag) =>
-                normalizeTagName(selectedTag.name) ===
-                normalizeTagName(tag.name),
-            ),
-        )
-        .slice(0, 5)
-    : [];
+  useEffect(() => {
+    if (!normalizedTagName) return;
+
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await fetch(
+          '/api/tags/suggestions?q=' + encodeURIComponent(tagName.trim()),
+          { signal: abortController.signal },
+        );
+        if (!response.ok) throw new Error('タグ候補を取得できません。');
+
+        const data: { tags: TagSuggestion[] } = await response.json();
+        setTagSuggestList(
+          data.tags.filter(
+            (tag) =>
+              !selectedTagList.some(
+                (selectedTag) =>
+                  normalizeTagName(selectedTag.name) ===
+                  normalizeTagName(tag.name),
+              ),
+          ),
+        );
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        console.error(error);
+        setTagSuggestList([]);
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      abortController.abort();
+    };
+  }, [normalizedTagName, selectedTagList, tagName]);
 
   const handleSelectTag = (tag: TagSuggestion) => {
     // サジェストから選んだタグが、選択済み一覧に存在するか確認する。
@@ -116,17 +122,20 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     // 重複している場合、または上限の5件に達している場合は追加しない。
     if (duplicated || selectedTagList.length >= 5) return;
 
-    // 仮タグ一覧に存在するため、typeをexistingとして選択済み一覧へ追加する。
+    // DBに存在するタグなので、IDを保持したexistingとして追加する。
     setSelectedTagList((prev) => [
       ...prev,
       {
-        type: 'new',
+        type: 'existing',
+        id: tag.id,
         name: tag.name,
+        slug: tag.slug,
       },
     ]);
 
     // 選択後に入力欄を空にすると、サジェストも自動的に閉じる。
     setTagName('');
+    setTagSuggestList([]);
   };
 
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -378,7 +387,10 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
               id="post-tags"
               name="tags"
               type="text"
-              onChange={(e) => setTagName(e.target.value)}
+              onChange={(e) => {
+                setTagName(e.target.value);
+                setTagSuggestList([]);
+              }}
               value={tagName}
               onKeyDown={(e) => handleTagKeyDown(e)}
               placeholder="タグを入力してEnter"

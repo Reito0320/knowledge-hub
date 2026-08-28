@@ -12,11 +12,26 @@ import {
   type SessionUser,
 } from '@/app/api/auth/session/fetch';
 
+type MemberSuggestion = {
+  id: string;
+  name: string;
+  email: string;
+  jobTitle: string | null;
+  department: {
+    name: string;
+  } | null;
+};
+
 const Header = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [searchMember, setSearchMember] = useState<string>('');
+  const [memberSuggestions, setMemberSuggestions] = useState<
+    MemberSuggestion[]
+  >([]);
+  const [isSearchingMember, setIsSearchingMember] =
+    useState<boolean>(false);
   const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
   const [hasImageError, setHasImageError] = useState<boolean>(false);
@@ -39,6 +54,42 @@ const Header = () => {
 
     void checkSession();
   }, [pathname]);
+
+  useEffect(() => {
+    const keyword = searchMember.trim();
+
+    if (!keyword || !user) return;
+
+    const abortController = new AbortController();
+
+    // 入力のたびにAPIを呼ばず、250ms入力が止まってから候補を取得する。
+    const timeoutId = window.setTimeout(async () => {
+      setIsSearchingMember(true);
+
+      try {
+        const response = await fetch(
+          '/api/users/suggestions?q=' + encodeURIComponent(keyword),
+          { signal: abortController.signal },
+        );
+
+        if (!response.ok) throw new Error('メンバー候補を取得できません。');
+
+        const data: { users: MemberSuggestion[] } = await response.json();
+        setMemberSuggestions(data.users);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        console.error(error);
+        setMemberSuggestions([]);
+      } finally {
+        if (!abortController.signal.aborted) setIsSearchingMember(false);
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      abortController.abort();
+    };
+  }, [searchMember, user]);
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
@@ -53,10 +104,33 @@ const Header = () => {
       setIsSigningOut(false);
     }
   };
-  const handleSearchMemberButton = () => {
+  const handleSearchMember = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     const trimSearchMember = searchMember.trim();
     if (!trimSearchMember) return;
-    router.push('/search?member=' + trimSearchMember);
+    router.push('/search?member=' + encodeURIComponent(trimSearchMember));
+    setMemberSuggestions([]);
+    setSearchMember('');
+  };
+
+  const handleMemberInputChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const nextValue = event.target.value;
+    setSearchMember(nextValue);
+    // 前の入力に対する候補を残さず、現在の文字列の検索完了を待つ。
+    setMemberSuggestions([]);
+    setIsSearchingMember(Boolean(nextValue.trim()));
+  };
+
+  const handleSelectMember = (member: MemberSuggestion) => {
+    const params = new URLSearchParams({
+      member: member.name,
+      memberId: member.id,
+    });
+
+    router.push('/search?' + params.toString());
+    setMemberSuggestions([]);
     setSearchMember('');
   };
 
@@ -80,7 +154,10 @@ const Header = () => {
           />
         </Link>
 
-        <div className="relative col-start-2 row-start-1 h-9 w-full max-w-xs justify-self-end sm:h-10">
+        <form
+          onSubmit={handleSearchMember}
+          className="relative col-start-2 row-start-1 h-9 w-full max-w-xs justify-self-end sm:h-10"
+        >
           <label htmlFor="header-search" className="sr-only">
             メンバーを検索
           </label>
@@ -88,20 +165,60 @@ const Header = () => {
             id="header-search"
             type="search"
             placeholder="メンバー検索"
-            onChange={(e) => setSearchMember(e.target.value)}
+            onChange={handleMemberInputChange}
             value={searchMember}
+            autoComplete="off"
             className="h-full w-full rounded-xl border border-[#DDE4EC] bg-[#F8FAFC] pl-3 pr-10 text-xs text-[#344256] outline-none transition placeholder:text-[#9AA7B7] focus:border-[#254F8F]/50 focus:ring-2 focus:ring-[#254F8F]/10 sm:pr-20 sm:text-sm"
           />
           <button
-            type="button"
+            type="submit"
             aria-label="メンバーを検索"
-            onClick={handleSearchMemberButton}
             className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg bg-[#254F8F] text-xs font-bold text-white transition hover:bg-[#1E3A5F] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#254F8F] sm:h-8 sm:w-auto sm:px-3"
           >
             <FiSearch aria-hidden="true" className="size-4 sm:hidden" />
             <span className="hidden sm:inline">検索</span>
           </button>
-        </div>
+
+          {searchMember.trim() && user && (
+            <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] overflow-hidden rounded-xl border border-[#DDE4EC] bg-white shadow-[0_16px_35px_rgba(30,58,95,0.14)]">
+              {isSearchingMember ? (
+                <p className="px-4 py-3 text-xs text-[#7B8899]">
+                  メンバーを検索中...
+                </p>
+              ) : memberSuggestions.length > 0 ? (
+                <ul aria-label="メンバーの検索候補">
+                  {memberSuggestions.map((member) => (
+                    <li key={member.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectMember(member)}
+                        className="flex w-full items-center gap-3 border-b border-[#EEF1F4] px-3 py-3 text-left transition last:border-b-0 hover:bg-[#F5F8FC] focus-visible:bg-[#F5F8FC] focus-visible:outline-none"
+                      >
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#E8F0FA] text-xs font-bold text-[#254F8F]">
+                          {member.name.trim().slice(0, 1) || 'U'}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-bold text-[#344256]">
+                            {member.name}
+                          </span>
+                          <span className="block truncate text-xs text-[#7B8899]">
+                            {member.department?.name ??
+                              member.jobTitle ??
+                              member.email}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-4 py-3 text-xs text-[#7B8899]">
+                  一致するメンバーはいません。
+                </p>
+              )}
+            </div>
+          )}
+        </form>
 
         <div className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end gap-2 sm:gap-3">
           {isCheckingSession ? (
