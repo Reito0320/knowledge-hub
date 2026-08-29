@@ -7,6 +7,9 @@ import {
 import { fetchUpdatePost } from '@/app/api/post/[postId]/fetch';
 import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { validatePostForPublish } from '@/lib/post/validate-post-for-publish';
+import { toast } from 'react-toastify';
 import {
   FiAlertCircle,
   FiArrowLeft,
@@ -82,8 +85,14 @@ const FirstSection = ({ mode, postId, storageKey }: FirstSectionProps) => {
             currentPostIdRef.current = response.postId;
 
             // 新規記事を一度だけ作成し、以降の自動保存はPATCHへ切り替える。
+            // router.replaceでは編集ページが再マウントされSkeletonが出るため、
+            // 現在の画面を維持したままURLだけを編集URLへ置き換える。
             localStorage.removeItem(storageKey);
-            router.replace(`/post/${response.postId}/edit`);
+            window.history.replaceState(
+              null,
+              '',
+              `/post/${response.postId}/edit`,
+            );
           }
 
           setSaveStatus('saved');
@@ -121,6 +130,20 @@ const FirstSection = ({ mode, postId, storageKey }: FirstSectionProps) => {
       const cashData = localData ? JSON.parse(localData) : null;
       if (!cashData) throw new Error('記事の入力値を取得できませんでした。');
 
+      if (publish) {
+        const invalidItems = validatePostForPublish(cashData).filter(
+          (item) => !item.valid,
+        );
+        if (invalidItems.length > 0) {
+          setNotice(invalidItems.map((item) => item.message).join(' '));
+          setSaveStatus('error');
+          document
+            .getElementById('publish-check')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+      }
+
       let response: { message: string; postId: string };
 
       const targetPostId = currentPostIdRef.current;
@@ -134,6 +157,7 @@ const FirstSection = ({ mode, postId, storageKey }: FirstSectionProps) => {
       localStorage.removeItem(storageKey);
       setNotice(response.message);
       setSaveStatus('saved');
+      toast.success(response.message);
       router.push('/post/' + response.postId);
       router.refresh();
     } catch (error) {
@@ -142,6 +166,9 @@ const FirstSection = ({ mode, postId, storageKey }: FirstSectionProps) => {
         error instanceof Error ? error.message : '記事を保存できませんでした。',
       );
       setSaveStatus('error');
+      toast.error(
+        error instanceof Error ? error.message : '記事を保存できませんでした。',
+      );
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
@@ -155,19 +182,21 @@ const FirstSection = ({ mode, postId, storageKey }: FirstSectionProps) => {
       className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"
     >
       <div>
-        <span
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-[#66758A] transition hover:text-[#254F8F]"
+        <Link
+          href="/post"
+          className="inline-flex h-10 items-center gap-2.5 rounded-xl border border-[#DED4CA] bg-white px-3.5 text-sm font-bold text-[#5F5852] shadow-sm transition hover:-translate-x-0.5 hover:border-[#C88A5B] hover:bg-[#FFF8F1] hover:text-[#98592F]"
         >
-          <FiArrowLeft aria-hidden="true" />
-          戻る
-        </span>
+          <span className="flex size-6 items-center justify-center rounded-lg bg-[#FFF0E2] text-[#A66334]">
+            <FiArrowLeft aria-hidden="true" />
+          </span>
+          自分の記事へ戻る
+        </Link>
         <div className="mt-4 flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-xl bg-[#E8F0FA] text-[#254F8F]">
+          <span className="flex size-11 items-center justify-center rounded-xl bg-[#FFF0E2] text-[#A66334]">
             <FiEdit3 aria-hidden="true" className="size-5" />
           </span>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1E3A5F] sm:text-3xl">
+            <h1 className="text-2xl font-bold tracking-tight text-[#454A52] sm:text-3xl">
               {mode === 'edit' ? 'ナレッジを編集' : 'ナレッジを投稿'}
             </h1>
             <p className="mt-1 text-sm text-[#7B8899]">
@@ -194,7 +223,7 @@ const FirstSection = ({ mode, postId, storageKey }: FirstSectionProps) => {
             type="button"
             onClick={() => savePost(true)}
             disabled={isSaving}
-            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#254F8F] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1E3A5F] sm:flex-none"
+            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#A66334] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#86502D] sm:flex-none"
           >
             <FiSend aria-hidden="true" />
             {isSaving ? '処理中...' : '公開する'}

@@ -10,7 +10,7 @@ export default async function Home() {
   const homeData = await getHomeData();
 
   return (
-    <main className="min-h-screen bg-[#F7F6F3] text-[#1E2A3A]">
+    <main className="min-h-screen min-w-0 overflow-x-clip bg-[#F7F6F3] text-[#1E2A3A]">
       <FirstSection stats={homeData.stats} />
       <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 lg:py-14">
         <SecondSection

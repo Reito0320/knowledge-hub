@@ -23,6 +23,7 @@ import {
   fetchGetSession,
   type SessionUser,
 } from '@/app/api/auth/session/fetch';
+import { toast } from 'react-toastify';
 
 type DepartmentOption = { id: string; name: string };
 
@@ -153,10 +154,12 @@ const Header = () => {
       await fetchDeleteSession();
       await signOut();
       setUser(null);
+      toast.success('サインアウトしました。');
       router.replace('/login');
       router.refresh();
     } catch (error) {
       console.error('サインアウトに失敗しました:', error);
+      toast.error('サインアウトできませんでした。');
     } finally {
       setIsSigningOut(false);
     }
@@ -284,6 +287,14 @@ const Header = () => {
                 <FiLogOut aria-hidden="true" className="size-4" />
                 <span>{isSigningOut ? '処理中...' : 'サインアウト'}</span>
               </button>
+              <div className="hidden min-w-0 max-w-48 text-right sm:block">
+                <p className="truncate text-sm font-bold text-[#4B4E54]">
+                  {user.name}
+                </p>
+                <p className="truncate text-[11px] text-[#8A8179]">
+                  {user.email}
+                </p>
+              </div>
               <div className="group relative">
                 <button
                   type="button"

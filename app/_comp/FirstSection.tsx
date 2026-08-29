@@ -11,6 +11,7 @@ import {
   FiUsers,
 } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 
 type FirstSectionProps = {
   stats: {
@@ -58,6 +59,9 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
           return;
         console.error(error);
         setKnowledgeSuggestions([]);
+        toast.error('ナレッジ候補を取得できませんでした。', {
+          toastId: 'knowledge-suggestion-error',
+        });
       } finally {
         if (!abortController.signal.aborted) setIsSearchingKnowledge(false);
       }
@@ -101,40 +105,47 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
   };
 
   return (
-    <section className="border-b border-[#DDE4EC] bg-white">
-      <div className="mx-auto max-w-6xl px-5 py-5 sm:px-8 lg:py-16">
-        <section className="grid w-full items-center gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(420px,0.9fr)] lg:gap-10">
+    <section className="relative overflow-x-clip border-b border-[#E7DDD4] bg-[linear-gradient(135deg,#FFFCF8_0%,#F8F5F1_55%,#F2F6F5_100%)]">
+      <div className="pointer-events-none absolute -left-24 top-10 size-72 rounded-full bg-[#F2D7BF]/25 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 top-0 size-80 rounded-full bg-[#DCE9E3]/35 blur-3xl" />
+      <div className="relative mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-12 lg:py-18">
+        <section className="grid min-w-0 w-full items-center gap-9 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:gap-12 xl:grid-cols-[minmax(0,1.05fr)_minmax(400px,0.95fr)] xl:gap-14">
           <motion.div
             initial="hidden"
             animate="visible"
             variants={motionContainer.containerVariants}
-            className="max-w-2xl"
+            className="max-w-xl"
           >
             <motion.div
               variants={motionContainer.itemVariants}
-              className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#FFF0E3] px-3 py-1.5 text-xs font-semibold text-[#B55F24]"
+              className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#E8CDB7] bg-white/75 px-3 py-1.5 text-xs font-bold text-[#9D5B2F] shadow-sm backdrop-blur"
             >
               <FiBookOpen aria-hidden="true" />
-              社内の知識を、みんなの資産へ
+              Knowledge-Hub · 社内ナレッジ共有
             </motion.div>
             <motion.h1
               variants={motionContainer.itemVariants}
-              className="text-3xl font-bold leading-tight tracking-[-0.03em] text-[#1E3A5F] sm:text-4xl lg:text-[2.5rem]"
+              className="text-[2rem] font-bold leading-[1.28] tracking-[-0.035em] text-[#414750] sm:text-[2.55rem] lg:text-[2.8rem]"
             >
-              困ったとき、知っている人と
-              <br className="hidden sm:block" />
-              情報にすぐたどり着ける。
+              知りたいことに、
+              <br />
+              <span className="text-[#A66334]">すぐたどり着く。</span>
             </motion.h1>
             <motion.div variants={motionContainer.itemVariants}>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-[#66758A] sm:text-base">
-                技術情報から日々の業務ノウハウまで。
-              </p>
-              <p className="max-w-2xl text-sm leading-7 text-[#66758A] sm:text-base">
-                キーワードで検索すると、関連記事と詳しいメンバーが見つかります。
+              <p className="mt-5 max-w-lg text-sm leading-7 text-[#71685F] sm:text-base sm:leading-8">
+                技術情報から日々の業務ノウハウまで、社内に散らばる経験を一か所へ。記事と、その分野に詳しいメンバーを一緒に見つけられます。
               </p>
             </motion.div>
           </motion.div>
-          <div className="flex w-full flex-col gap-5 lg:gap-6">
+          <div className="flex min-w-0 w-full flex-col gap-5 rounded-3xl border border-white/80 bg-white/70 p-5 shadow-[0_20px_55px_rgba(72,48,30,0.08)] backdrop-blur sm:p-6 lg:gap-6">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#9D5B2F]">
+                Today&apos;s knowledge
+              </p>
+              <h2 className="mt-1 text-lg font-bold text-[#4B4E54]">
+                投稿された全ての記事
+              </h2>
+            </div>
             <motion.div
               initial="hidden"
               animate="visible"
@@ -169,7 +180,7 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
                   key={label}
                   whileHover={{ y: -3 }}
                   transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-4 shadow-sm sm:flex-col sm:items-start lg:px-4 ${cardClass}`}
+                  className={`flex min-w-0 items-center gap-3 rounded-2xl border px-4 py-4 sm:flex-col sm:items-start lg:px-4 ${cardClass}`}
                 >
                   <span
                     className={`flex size-10 items-center justify-center rounded-xl ${iconClass}`}
@@ -177,7 +188,7 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
                     <Icon aria-hidden="true" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-xl font-bold text-[#1E3A5F]">{value}</p>
+                    <p className="text-xl font-bold text-[#454A52]">{value}</p>
                     <p className="whitespace-nowrap text-xs text-[#7B8899]">
                       {label}
                     </p>
@@ -193,7 +204,7 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
             >
               <Link
                 href="/post/new"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#254F8F] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#1E3A5F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F]"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#D9C6B5] bg-white px-5 text-sm font-bold text-[#87512F] shadow-sm transition hover:border-[#B97845] hover:bg-[#FFF7EF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B97845]"
               >
                 <FiEdit3 aria-hidden="true" />
                 記事を書く
@@ -206,12 +217,12 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
           initial="hidden"
           animate="visible"
           variants={motionContainer.itemVariants}
-          className="relative mt-9 rounded-2xl border border-[#E5DED5] bg-[#FCFAF7] p-3 shadow-[0_10px_30px_rgba(82,57,38,0.06)] sm:flex sm:items-center sm:gap-3"
+          className="relative mt-10 rounded-2xl border border-[#DED2C7] bg-white p-3 shadow-[0_14px_38px_rgba(82,57,38,0.08)] sm:flex sm:items-center sm:gap-3"
         >
           <div className="flex min-w-0 flex-1 items-center gap-3 px-2">
             <FiSearch
               aria-hidden="true"
-              className="shrink-0 text-xl text-[#66758A]"
+              className="shrink-0 text-xl text-[#A66334]"
             />
             <label htmlFor="knowledge-search" className="sr-only">
               記事や詳しいメンバーを検索
@@ -235,7 +246,7 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
           <button
             type="button"
             onClick={handleKnowledgeSearchButton}
-            className="mt-2 h-11 w-full rounded-xl bg-[#1E3A5F] px-6 text-sm font-bold text-white transition hover:opacity-90 sm:mt-0 sm:w-auto"
+            className="mt-2 h-11 w-full rounded-xl bg-[#A66334] px-6 text-sm font-bold text-white transition hover:bg-[#86502D] sm:mt-0 sm:w-auto"
           >
             ナレッジを検索
           </button>
@@ -284,14 +295,14 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
             </div>
           )}
         </motion.div>
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-[#66758A]">
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-[#756C64]">
           <span className="mr-1 font-semibold">よく検索されています</span>
           {['入社手続き', 'AWS', '開発環境', '社内申請'].map((keyword) => (
             <button
               key={keyword}
               type="button"
               onClick={() => router.push('/search?category=' + keyword)}
-              className="rounded-full border border-[#D8E1EB] bg-white px-3 py-1.5 transition hover:border-[#254F8F]/40 hover:text-[#254F8F]"
+              className="rounded-full border border-[#DED4CA] bg-white/80 px-3 py-1.5 transition hover:border-[#C88A5B] hover:bg-[#FFF8F1] hover:text-[#99582E]"
             >
               {keyword}
             </button>
