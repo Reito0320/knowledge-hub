@@ -4,6 +4,7 @@ export const handleSignup = async (
   name: string,
   email: string,
   password: string,
+  departmentId: string,
 ): Promise<boolean> => {
   try {
     await signUp({
@@ -18,6 +19,7 @@ export const handleSignup = async (
     });
 
     sessionStorage.setItem('signupEmail', email);
+    sessionStorage.setItem('signupDepartmentId', departmentId);
     return true;
   } catch (error) {
     console.error(error);

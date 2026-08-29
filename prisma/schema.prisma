@@ -1,7 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// knowledge-hub の業務データモデル。
+// Cognitoは本人確認、DBはアプリ内の権限・プロフィール・投稿データを担当する。
 
 generator client {
   provider = "prisma-client"
@@ -12,25 +10,224 @@ datasource db {
   provider = "postgresql"
 }
 
+// アプリ内の権限。Cognitoの認証状態とは分離して管理する。
+enum UserRole {
+  MEMBER
+  ADMIN
+}
+
+// 技術記事と、それ以外の業務ノウハウを検索・表示時に分ける。
+enum PostCategory {
+  TECH
+  BUSINESS
+}
+
+// 下書き・公開・非公開化を一つの値で管理し、状態の矛盾を防ぐ。
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// 記事を誰に見せるかを投稿者自身が選択する。
+enum PostVisibility {
+  // ログイン中の全メンバー。通常の記事一覧にも表示する。
+  ORGANIZATION
+  // 一覧には表示せず、記事のURLを知っているメンバーだけが閲覧する。
+  LINK
+  // 投稿者と同じ部署に所属するメンバーだけが閲覧する。
+  DEPARTMENT
+  // 投稿者本人だけが閲覧する。
+  PRIVATE
+}
+
+// Cognitoユーザーと1対1で対応するアプリ利用者。
+// idにはCognito Access Tokenのsubを保存し、認証ユーザーを一意に結び付ける。
 model User {
-  id        String   @id
-  email     String   @unique
-  name      String
-  photoUrl  String?
-  posts     Post[]
+  /// Cognitoが発行するユーザー固有のsub。
+  id           String      @id
+  /// ログインと社内連絡先に使うメールアドレス。
+  email        String      @unique
+  /// 画面に表示するユーザー名。
+  name         String
+  /// ユーザーが設定したプロフィール画像のURL。
+  photoUrl     String?
+  /// 役職や担当職種。
+  jobTitle     String?
+  /// 得意分野や担当業務を記載する自己紹介文。
+  bio          String?
+  /// アプリ内の操作権限。通常ユーザーはMEMBER。
+  role         UserRole    @default(MEMBER)
+  /// 所属部署を参照する外部キー。未設定も許可する。
+  departmentId String?
+  /// departmentIdに対応する所属部署。
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  /// このユーザーが投稿した記事。
+  posts        Post[]
+  /// このユーザーが投稿したコメント。
+  comments     Comment[]
+  /// このユーザーが付けたいいね。
+  postLikes    PostLike[]
+  /// このユーザーが保存したブックマーク。
+  bookmarks    Bookmark[]
+  /// ユーザー情報をDBへ登録した日時。
+  createdAt    DateTime    @default(now())
+  /// ユーザー情報を最後に更新した日時。
+  updatedAt    DateTime    @updatedAt
+
+  @@index([departmentId])
+}
+
+// 投稿者の所属を表示し、メンバー・記事を部署単位で検索するためのマスタ。
+model Department {
+  /// 部署を識別するUUID。
+  id        String   @id @default(uuid())
+  /// 画面表示と検索に使う一意な部署名。
+  name      String   @unique
+  /// この部署に所属するユーザー。
+  members   User[]
+  /// 部署を登録した日時。
   createdAt DateTime @default(now())
+  /// 部署情報を最後に更新した日時。
   updatedAt DateTime @updatedAt
 }
 
+// Markdown本文を持つナレッジ記事。
+// publishedAtは公開順、viewCountは人気記事の集計に利用する。
 model Post {
-  id        String   @id @default(uuid())
-  title     String
-  content   String
-  published Boolean  @default(false)
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// 記事を識別するUUID。
+  id          String         @id @default(uuid())
+  /// 一覧と詳細画面に表示する記事タイトル。
+  title       String
+  /// 記事一覧や検索結果に表示する短い概要。
+  excerpt     String?
+  /// Markdown形式で保存する記事本文。
+  content     String
+  /// 技術記事か業務記事かを表す分類。
+  category    PostCategory   @default(TECH)
+  /// 下書き・公開・アーカイブの公開状態。
+  status      PostStatus     @default(DRAFT)
+  /// 公開済み記事を閲覧できる範囲。
+  visibility  PostVisibility @default(ORGANIZATION)
+  /// 人気記事の算出に利用する閲覧回数。
+  viewCount   Int            @default(0)
+  /// 記事を公開した日時。下書きではnull。
+  publishedAt DateTime?
+  /// 投稿者を参照する外部キー。
+  authorId    String
+  /// authorIdに対応する投稿者。
+  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  /// 記事に投稿されたコメント。
+  comments    Comment[]
+  /// 記事に付けられたいいね。
+  likes       PostLike[]
+  /// 記事を保存したユーザーのブックマーク。
+  bookmarks   Bookmark[]
+  /// 記事に設定されたタグとの関連。
+  postTags    PostTag[]
+  /// 記事を作成した日時。
+  createdAt   DateTime       @default(now())
+  /// 記事を最後に更新した日時。
+  updatedAt   DateTime       @updatedAt
 
   @@index([authorId, createdAt])
+  @@index([status, category, publishedAt])
+  @@index([status, visibility, publishedAt])
+}
+
+// 記事の分類・検索に使うタグ。slugはURLクエリで安全に扱う識別子。
+model Tag {
+  /// タグを識別するUUID。
+  id        String    @id @default(uuid())
+  /// 画面に表示する一意なタグ名。
+  name      String    @unique
+  /// URLや検索条件に使う一意な文字列。
+  slug      String    @unique
+  /// このタグが設定された記事との関連。
+  postTags  PostTag[]
+  /// タグを作成した日時。
+  createdAt DateTime  @default(now())
+  /// タグを最後に更新した日時。
+  updatedAt DateTime  @updatedAt
+}
+
+// PostとTagの多対多関係。複合主キーにより同じタグの重複付与を防ぐ。
+model PostTag {
+  /// タグを設定した記事のID。
+  postId    String
+  /// 記事に設定したタグのID。
+  tagId     String
+  /// postIdに対応する記事。
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  /// tagIdに対応するタグ。
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  /// 記事へタグを設定した日時。
+  createdAt DateTime @default(now())
+
+  @@id([postId, tagId])
+  @@index([tagId])
+}
+
+// 記事へのコメント。parentIdで返信を表現し、削除時は返信を残せるようSetNullにする。
+model Comment {
+  /// コメントを識別するUUID。
+  id        String    @id @default(uuid())
+  /// コメント本文。
+  content   String
+  /// コメント対象の記事ID。
+  postId    String
+  /// コメント投稿者のユーザーID。
+  authorId  String
+  /// 返信元コメントのID。通常コメントではnull。
+  parentId  String?
+  /// postIdに対応する記事。
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  /// authorIdに対応する投稿者。
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  /// parentIdに対応する返信元コメント。
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  /// このコメントに対して投稿された返信。
+  replies   Comment[] @relation("CommentReplies")
+  /// コメントを投稿した日時。
+  createdAt DateTime  @default(now())
+  /// コメントを最後に更新した日時。
+  updatedAt DateTime  @updatedAt
+
+  @@index([postId, createdAt])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+// 記事へのいいね。userIdとpostIdの複合主キーで1人1いいねを保証する。
+model PostLike {
+  /// いいねを付けたユーザーのID。
+  userId    String
+  /// いいねを付けた記事のID。
+  postId    String
+  /// userIdに対応するユーザー。
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// postIdに対応する記事。
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  /// いいねを付けた日時。
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+  @@index([postId, createdAt])
+}
+
+// 後で読み返す記事を利用者ごとに保存する。重複保存は複合主キーで防ぐ。
+model Bookmark {
+  /// 記事を保存したユーザーのID。
+  userId    String
+  /// 保存した記事のID。
+  postId    String
+  /// userIdに対応するユーザー。
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// postIdに対応する記事。
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  /// ブックマークへ追加した日時。
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+  @@index([postId])
 }

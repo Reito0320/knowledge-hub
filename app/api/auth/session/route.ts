@@ -1,10 +1,81 @@
 import { verifyCognitoAccessToken } from '@/lib/amplify/cognito-verify-access-token';
 import { getCognitoUser } from '@/lib/amplify/get-cognito-user';
-import { deleteCookie } from '@/lib/cookie';
+import { deleteCookie, getCookie } from '@/lib/cookie';
+import { decrypt } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
 import { createSession } from '@/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * 自前sessionを取得して、それを元にpayloadからuserIdを取り出し、それを使ってuser情報を取得して返すGET api
+ * @returns
+ */
+export const GET = async () => {
+  try {
+    const sessionToken = await getCookie('session');
+
+    if (!sessionToken)
+      return NextResponse.json(
+        {
+          message: 'session cookieがありません。',
+        },
+        { status: 401 },
+      );
+
+    const payload = await decrypt(sessionToken);
+
+    if (!payload || typeof payload.userId !== 'string')
+      return NextResponse.json(
+        {
+          message: 'sessionを確認できませんでした。',
+        },
+        { status: 401 },
+      );
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: payload.userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        photoUrl: true,
+        jobTitle: true,
+        bio: true,
+        department: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!user)
+      return NextResponse.json(
+        {
+          message: 'userが存在していませんでした。',
+        },
+        { status: 401 },
+      );
+
+    return NextResponse.json({
+      message: 'sessionを確認しました。',
+      user,
+    });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      {
+        message: 'sessionの検証に失敗しました。',
+      },
+      { status: 401 },
+    );
+  }
+};
+
+/**
+ * cognitoTokenが埋め込まれたheaderを取得して、tokenを抽出し検証。
+ * 検証されたtokenからpayloadを発行して、payloadからsubを取得して、subからuserの情報を探す。
+ * 見つかった場合は自前sessionの発行
+ * @returns void
+ */
 export const POST = async (req: NextRequest) => {
   try {
     /* カスタムfetch経由で送られてきた通信かを確認 */
@@ -12,7 +83,9 @@ export const POST = async (req: NextRequest) => {
     /* カスタムfetchの通信の中にtokenが確認できなかった場合の分岐 */
     if (!authorization?.startsWith('Bearer '))
       return NextResponse.json(
-        { message: '認証トークンがありませんでした。' },
+        {
+          message: '認証トークンがありませんでした。',
+        },
         { status: 401 },
       );
 
@@ -21,52 +94,40 @@ export const POST = async (req: NextRequest) => {
     /* tokenの検証をし、正常であればpayloadが発行される */
     const payload = await verifyCognitoAccessToken(accessToken);
 
-    /* 検証済みtokenを使い、Cognitoからuser属性を取得 */
-    const cognitoUser = await getCognitoUser(accessToken);
-
-    if (!cognitoUser)
+    if (!payload.sub)
       return NextResponse.json(
-        { message: 'cognitoUserが取得できませんでした。' },
+        {
+          message: 'cognito subの取得できません',
+        },
         { status: 401 },
       );
 
-    if (!cognitoUser.sub || cognitoUser.sub !== payload.sub)
-      return NextResponse.json(
-        { message: 'tokenとuser情報が一致していませんでした。' },
-        { status: 401 },
-      );
-
-    if (!cognitoUser.email || !cognitoUser.name || !cognitoUser.emailVerified)
-      return NextResponse.json(
-        { message: '必要なuser属性を確認できませんでした。' },
-        { status: 403 },
-      );
-
-    /* 再実行されても重複しないようにuserを作成・更新 */
-    const user = await prisma.user.upsert({
+    const user = await prisma.user.findUnique({
       where: {
-        id: cognitoUser.sub,
-      },
-      update: {
-        email: cognitoUser.email,
-        name: cognitoUser.name,
-      },
-      create: {
-        id: cognitoUser.sub,
-        email: cognitoUser.email,
-        name: cognitoUser.name,
+        id: payload.sub,
       },
       select: {
         id: true,
       },
     });
 
+    if (!user)
+      return NextResponse.json(
+        {
+          message: 'アプリのUserが作成されていません。',
+        },
+        { status: 403 },
+      );
+
     /* 自前のsession作成関数を使う。ここでpayload.uidを使わないのは、db経由で発行されたものと明確にするため */
     await createSession(user.id);
 
-    return NextResponse.json({
-      message: 'ログインしました。',
-    });
+    return NextResponse.json(
+      {
+        message: 'ログインしました。',
+      },
+      { status: 200 },
+    );
   } catch (error) {
     console.error(error);
     return NextResponse.json(
@@ -80,13 +141,19 @@ export const DELETE = async () => {
   try {
     /* sessionを削除する通信 */
     await deleteCookie('session');
-    return NextResponse.json({
-      message: 'sessionの削除を実施しました。',
-    });
+    return NextResponse.json(
+      {
+        message: 'sessionの削除を実施しました。',
+      },
+      { status: 200 },
+    );
   } catch (error) {
     console.error(error);
-    return NextResponse.json({
-      message: 'sessionの削除ができませんでした。',
-    });
+    return NextResponse.json(
+      {
+        message: 'sessionの削除ができませんでした。',
+      },
+      { status: 401 },
+    );
   }
 };

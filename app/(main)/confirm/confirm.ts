@@ -25,6 +25,5 @@ export const cognitoConfirm = async (email: string, code: string) => {
     confirmationCode: code.trim(),
   });
 
-  /* ここでDBにuserのデータを保存するfetchが走る */
   return result;
 };

@@ -1,28 +1,54 @@
-type SessionResponse = {
-  message: string;
+export type SessionUser = {
+  id: string;
+  name: string;
+  email: string;
+  photoUrl: string | null;
+  jobTitle: string | null;
+  bio: string | null;
+  department: { id: string; name: string } | null;
 };
 
+/**
+ * 自前sessionを取得して、userのデータを取得する関数
+ * @returns
+ */
+export const fetchGetSession = async () => {
+  const res = await fetch('/api/auth/session', {
+    method: 'GET',
+    cache: 'no-store',
+  });
+
+  if (!res.ok) return null;
+
+  const { user } = await res.json();
+  return user;
+};
+
+/**
+ * 取得したcognitoTokenをBearに連結させて通信を行い、server側でcognitoTokenの検証をする関数
+ * @param header
+ * @returns
+ */
 export const fetchPostCreateSession = async (header: string) => {
   const res = await fetch('/api/auth/session', {
     method: 'POST',
-    credentials: 'include',
     headers: {
       Authorization: header,
     },
   });
-  const data = (await res.json()) as SessionResponse;
+  const { message } = await res.json();
 
-  if (!res.ok) throw new Error(data.message);
+  if (!res.ok) throw new Error(message);
 
-  return data;
+  return message;
 };
 
 export const fetchDeleteSession = async () => {
   const res = await fetch('/api/auth/session', {
     method: 'DELETE',
-    credentials: 'include',
   });
-  const data = (await res.json()) as SessionResponse;
+  const { message } = await res.json();
 
-  if (!res.ok) throw new Error(data.message);
+  if (!res.ok) throw new Error(message);
+  return message;
 };
