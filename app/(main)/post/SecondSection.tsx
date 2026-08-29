@@ -24,6 +24,7 @@ import MarkdownRenderer from '@/comp/MarkdownRender';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import { continueMarkdownList } from '@/lib/markdown/continue-list';
 import type { PostVisibility } from '@/lib/post/post-visibility';
+import { validatePostForPublish } from '@/lib/post/validate-post-for-publish';
 import VisibilitySelector from './_components/VisibilitySelector';
 import TextColorPicker, { type MarkdownTextColor } from './_components/TextColorPicker';
 import { AnimatePresence, motion } from 'motion/react';
@@ -38,7 +39,7 @@ import {
   FiEye,
   FiHash,
   FiImage,
-  FiInfo,
+  FiAlertCircle,
   FiItalic,
   FiLink,
   FiList,
@@ -107,6 +108,10 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
 
   // 現在の入力値も正規化し、仮タグ一覧との部分一致検索に使用する。
   const normalizedTagName = normalizeTagName(tagName);
+  const publishValidationItems = validatePostForPublish({ title, content });
+  const invalidPublishItemCount = publishValidationItems.filter(
+    (item) => !item.valid,
+  ).length;
 
   useEffect(() => {
     if (!normalizedTagName) return;
@@ -365,7 +370,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="min-w-0 overflow-hidden rounded-2xl border border-[#DDE4EC] bg-white shadow-[0_12px_35px_rgba(30,58,95,0.05)]"
+        className="min-w-0 overflow-hidden rounded-2xl border border-[#E3D9CF] bg-white shadow-[0_12px_35px_rgba(92,67,47,0.05)]"
       >
         <div className="space-y-6 border-b border-[#E8EDF2] p-5 sm:p-7">
           <div>
@@ -383,7 +388,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
               onChange={(e) => setTitle(e.target.value)}
               maxLength={100}
               placeholder="記事の内容が伝わるタイトルを入力"
-              className="mt-2 h-13 w-full rounded-xl border border-[#DDE4EC] bg-[#FBFCFD] px-4 text-base font-semibold text-[#26384D] outline-none transition placeholder:font-normal placeholder:text-[#A2ADBA] focus:border-[#254F8F]/50 focus:bg-white focus:ring-3 focus:ring-[#254F8F]/8 sm:text-lg"
+              className="mt-2 h-13 w-full rounded-xl border border-[#DED6CE] bg-[#FCFAF7] px-4 text-base font-semibold text-[#3F4650] outline-none transition placeholder:font-normal placeholder:text-[#A29A93] focus:border-[#B97845]/55 focus:bg-white focus:ring-3 focus:ring-[#B97845]/10 sm:text-lg"
             />
             <p className="mt-2 text-right text-xs text-[#98A4B3]">
               {title.length} / 100
@@ -408,7 +413,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
               onChange={(e) => setExcerpt(e.target.value)}
               maxLength={160}
               placeholder="一覧画面に表示する短い説明を入力してください"
-              className="mt-2 w-full resize-none rounded-xl border border-[#DDE4EC] bg-[#FBFCFD] px-4 py-3 text-sm leading-6 text-[#344256] outline-none transition placeholder:text-[#A2ADBA] focus:border-[#254F8F]/50 focus:bg-white focus:ring-3 focus:ring-[#254F8F]/8"
+              className="mt-2 w-full resize-none rounded-xl border border-[#DED6CE] bg-[#FCFAF7] px-4 py-3 text-sm leading-6 text-[#4B5159] outline-none transition placeholder:text-[#A29A93] focus:border-[#B97845]/55 focus:bg-white focus:ring-3 focus:ring-[#B97845]/10"
             />
             <p className="mt-1 text-right text-xs text-[#98A4B3]">
               {excerpt.length} / 160
@@ -457,7 +462,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                 aria-label={`${label}のMarkdownを挿入`}
                 onClick={() => applyMarkdown(tool)}
                 whileTap={{ scale: 0.92 }}
-                className="flex size-9 items-center justify-center rounded-lg text-[#66758A] transition hover:bg-[#E8F0FA] hover:text-[#254F8F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F]"
+                className="flex size-9 items-center justify-center rounded-lg text-[#716961] transition hover:bg-[#FFF0E2] hover:text-[#A66334] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A66334]"
               >
                 <Icon aria-hidden="true" />
               </motion.button>
@@ -533,9 +538,9 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
         className="space-y-5 xl:sticky xl:top-22"
       >
         <VisibilitySelector value={visibility} onChange={setVisibility} />
-        <section className="rounded-2xl border border-[#DDE4EC] bg-white p-5">
-          <div className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F]">
-            <FiBookOpen aria-hidden="true" className="text-[#254F8F]" />
+        <section className="rounded-2xl border border-[#E3D9CF] bg-white p-5">
+          <div className="flex items-center gap-2 text-sm font-bold text-[#4B4E54]">
+            <FiBookOpen aria-hidden="true" className="text-[#A66334]" />
             記事のカテゴリ
           </div>
           <p className="mt-1 text-xs leading-5 text-[#8A97A8]">
@@ -593,12 +598,12 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-[#DDE4EC] bg-white p-5">
+        <section className="rounded-2xl border border-[#E3D9CF] bg-white p-5">
           <label
             htmlFor="post-tags"
-            className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F]"
+            className="flex items-center gap-2 text-sm font-bold text-[#4B4E54]"
           >
-            <FiTag aria-hidden="true" className="text-[#254F8F]" />
+            <FiTag aria-hidden="true" className="text-[#A66334]" />
             タグ
           </label>
           <p className="mt-1 text-xs leading-5 text-[#8A97A8]">
@@ -620,7 +625,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
               value={tagName}
               onKeyDown={(e) => handleTagKeyDown(e)}
               placeholder="タグを入力してEnter"
-              className="h-11 w-full rounded-xl border border-[#DDE4EC] bg-[#FBFCFD] pl-9 pr-10 text-sm text-[#344256] outline-none transition placeholder:text-[#A2ADBA] focus:border-[#254F8F]/50 focus:bg-white focus:ring-3 focus:ring-[#254F8F]/8"
+              className="h-11 w-full rounded-xl border border-[#DED6CE] bg-[#FCFAF7] pl-9 pr-10 text-sm text-[#4B5159] outline-none transition placeholder:text-[#A29A93] focus:border-[#B97845]/55 focus:bg-white focus:ring-3 focus:ring-[#B97845]/10"
             />
             <FiChevronDown
               aria-hidden="true"
@@ -637,7 +642,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                         <button
                           type="button"
                           onClick={() => handleSelectTag(tag)}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-[#344256] transition hover:bg-[#EEF4FB] hover:text-[#254F8F]"
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-[#4B5159] transition hover:bg-[#FFF3E8] hover:text-[#99582E]"
                         >
                           <FiHash
                             aria-hidden="true"
@@ -707,35 +712,41 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
           </div>
         </section>
 
-        {/* 自動チェックbuttonを押して公開前の個人情報や機密情報を検索するようなAI APIを使いたい。 */}
-        <section className="rounded-2xl border border-[#DDE4EC] bg-white p-5">
-          <div className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F]">
-            <FiCheck aria-hidden="true" className="text-[#39745A]" />
-            公開前のチェック
+        <section
+          id="publish-check"
+          aria-live="polite"
+          className={`rounded-2xl border p-5 ${
+            invalidPublishItemCount > 0
+              ? 'border-[#E5C7C3] bg-[#FFF9F8]'
+              : 'border-[#CFE1D6] bg-[#F8FCF9]'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <span className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${invalidPublishItemCount > 0 ? 'bg-[#F9E7E5] text-[#A34F55]' : 'bg-[#E5F3EB] text-[#39745A]'}`}>
+              {invalidPublishItemCount > 0 ? <FiAlertCircle aria-hidden="true" /> : <FiCheck aria-hidden="true" />}
+            </span>
+            <div>
+              <h2 className="text-sm font-bold text-[#4B4E54]">公開前の入力チェック</h2>
+              <p className="mt-1 text-xs leading-5 text-[#82776E]">
+                {invalidPublishItemCount > 0
+                  ? `公開までにあと${invalidPublishItemCount}項目必要です。`
+                  : '公開に必要な項目が入力されています。'}
+              </p>
+            </div>
           </div>
-          <ul className="mt-4 space-y-3 text-xs leading-5 text-[#66758A]">
-            {[
-              '個人情報や機密情報が含まれていない',
-              'タイトルから内容を想像できる',
-              '適切なカテゴリとタグを設定した',
-            ].map((item) => (
-              <li key={item} className="flex gap-2.5">
-                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#9AA7B7]" />
-                {item}
+          <ul className="mt-4 space-y-2.5">
+            {publishValidationItems.map((item) => (
+              <li key={item.field} className={`flex items-center gap-2 text-xs font-semibold ${item.valid ? 'text-[#39745A]' : 'text-[#A34F55]'}`}>
+                {item.valid ? <FiCheck aria-hidden="true" /> : <FiAlertCircle aria-hidden="true" />}
+                {item.valid ? `${item.label}を入力済み` : item.message}
               </li>
             ))}
+            <li className={`flex items-center gap-2 text-xs font-semibold ${selectedTagList.length > 0 ? 'text-[#39745A]' : 'text-[#92714F]'}`}>
+              {selectedTagList.length > 0 ? <FiCheck aria-hidden="true" /> : <FiAlertCircle aria-hidden="true" />}
+              {selectedTagList.length > 0 ? 'タグを設定済み' : 'タグを設定すると記事を見つけやすくなります（任意）'}
+            </li>
           </ul>
         </section>
-
-        <div className="flex gap-3 rounded-2xl border border-[#D8E5F2] bg-[#EEF5FC] p-4">
-          <FiInfo
-            aria-hidden="true"
-            className="mt-0.5 shrink-0 text-[#254F8F]"
-          />
-          <p className="text-xs leading-5 text-[#5D7189]">
-            完璧にまとめなくても大丈夫です。まずは下書きに保存して、少しずつ育てていきましょう。
-          </p>
-        </div>
       </motion.aside>
     </>
   );

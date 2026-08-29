@@ -16,7 +16,7 @@ const PostEditor = ({ mode, postId, initialData }: PostEditorProps) => {
   const storageKey = mode === 'create' ? 'post-draft:new' : `post-draft:${postId}`;
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-[#F5F7FA] px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F8F5F1] px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
       <form className="mx-auto max-w-345">
         <FirstSection
           mode={mode}

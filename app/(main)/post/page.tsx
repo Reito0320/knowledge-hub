@@ -22,6 +22,7 @@ import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import { postStatusCounter } from './post';
 import { useRouter } from 'next/navigation';
 import Skeleton from '@/comp/Skeleton';
+import { toast } from 'react-toastify';
 
 const statusStyles = {
   DRAFT: {
@@ -71,6 +72,7 @@ const PostPage = () => {
       } catch (error) {
         console.error(error);
         setErrorMessage('読み込みに失敗しました。');
+        toast.error('記事一覧を読み込めませんでした。');
       } finally {
         setIsLoading(false);
       }
@@ -86,9 +88,11 @@ const PostPage = () => {
     try {
       await fetchDeletePost(postId);
       setPosts((current) => current.filter((post) => post.id !== postId));
+      toast.success('記事を削除しました。');
     } catch (error) {
       console.error(error);
       setErrorMessage('記事を削除できませんでした。');
+      toast.error('記事を削除できませんでした。');
     }
   };
 

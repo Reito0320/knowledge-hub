@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { handleSignup } from './signup';
 import { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 
 const SingUpPage = () => {
   const router = useRouter();
@@ -34,7 +35,7 @@ const SingUpPage = () => {
     const signup = await handleSignup(name, email, password, departmentId);
     if (!signup) return;
     setIsLoading(false);
-    window.alert(`${email} 当てに送られている認証コードを確認してください。`);
+    toast.success(`${email} 宛てに認証コードを送信しました。`);
     router.push('/confirm');
   };
   return (

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import Header from '@/comp/Header';
 import AmplifyProvider from '@/comp/AmplifyProvider';
+import ToastProvider from '@/comp/ToastProvider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -33,6 +34,7 @@ export default function RootLayout({
         <AmplifyProvider>
           <Header />
           {children}
+          <ToastProvider />
         </AmplifyProvider>
       </body>
     </html>

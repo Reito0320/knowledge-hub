@@ -25,6 +25,7 @@ import {
   FiMessageCircle,
   FiSend,
 } from 'react-icons/fi';
+import { toast } from 'react-toastify';
 
 type PostDetailPageProps = {
   params: Promise<{
@@ -52,6 +53,11 @@ const categoryLabels = {
   BUSINESS: '業務・カルチャー',
 } as const;
 
+const categoryStyles = {
+  TECH: 'bg-[#EAF1F5] text-[#356A92]',
+  BUSINESS: 'bg-[#FFF0E2] text-[#99582E]',
+} as const;
+
 const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
   year: 'numeric',
   month: 'long',
@@ -68,7 +74,6 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
   const [isUpdatingLike, setIsUpdatingLike] = useState(false);
   const [isPostingComment, setIsPostingComment] = useState(false);
   const [isUpdatingBookmark, setIsUpdatingBookmark] = useState(false);
-  const [engagementError, setEngagementError] = useState('');
 
   useEffect(() => {
     const getTargetPost = async () => {
@@ -122,7 +127,6 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
 
     try {
       setIsUpdatingLike(true);
-      setEngagementError('');
       const result = await fetchTogglePostLike(postId);
       setPostData((current) =>
         current
@@ -133,8 +137,11 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
             }
           : current,
       );
+      toast.success(
+        result.liked ? '記事にいいねしました。' : 'いいねを取り消しました。',
+      );
     } catch (error) {
-      setEngagementError(
+      toast.error(
         error instanceof Error ? error.message : 'いいねを更新できませんでした。',
       );
     } finally {
@@ -149,7 +156,6 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
 
     try {
       setIsPostingComment(true);
-      setEngagementError('');
       const result = await fetchCreatePostComment(postId, content);
       setPostData((current) =>
         current
@@ -164,8 +170,9 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
           : current,
       );
       setCommentContent('');
+      toast.success('コメントを投稿しました。');
     } catch (error) {
-      setEngagementError(
+      toast.error(
         error instanceof Error
           ? error.message
           : 'コメントを投稿できませんでした。',
@@ -179,7 +186,6 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
     if (isUpdatingBookmark) return;
     try {
       setIsUpdatingBookmark(true);
-      setEngagementError('');
       const result = await fetchToggleBookmark(postId);
       setPostData((current) =>
         current
@@ -193,8 +199,13 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
             }
           : current,
       );
+      toast.success(
+        result.bookmarked
+          ? 'お気に入りに追加しました。'
+          : 'お気に入りから外しました。',
+      );
     } catch (error) {
-      setEngagementError(
+      toast.error(
         error instanceof Error
           ? error.message
           : 'お気に入りを更新できませんでした。',
@@ -205,12 +216,12 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
   };
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-[#F7F6F3] px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
+    <main className="min-h-[calc(100vh-4rem)] bg-[#F8F5F1] px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
       <div className="mx-auto max-w-5xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/post"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[#66758A] transition hover:text-[#254F8F]"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#DED4CA] bg-white px-3.5 text-sm font-bold text-[#5F5852] transition hover:border-[#C88A5B] hover:bg-[#FFF8F1] hover:text-[#98592F]"
           >
             <FiArrowLeft aria-hidden="true" />
             自分の記事へ戻る
@@ -218,7 +229,7 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
           {postData.canEdit && (
             <Link
               href={`/post/${postId}/edit`}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#D8E0E9] bg-white px-4 text-sm font-bold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#EEF4FB] hover:text-[#254F8F]"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#DCCFC3] bg-white px-4 text-sm font-bold text-[#5F5852] transition hover:border-[#C88A5B] hover:bg-[#FFF8F1] hover:text-[#98592F]"
             >
               <FiEdit3 aria-hidden="true" />
               編集する
@@ -226,30 +237,30 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
           )}
         </div>
 
-        <article className="overflow-hidden rounded-2xl border border-[#E3DDD6] bg-white shadow-[0_14px_38px_rgba(72,48,30,0.06)]">
-          <header className="border-b border-[#E8EDF2] px-5 py-7 sm:px-9 sm:py-10 lg:px-12">
+        <article className="overflow-hidden rounded-3xl border border-[#E3D9CF] bg-white shadow-[0_16px_42px_rgba(72,48,30,0.06)]">
+          <header className="border-b border-[#EAE0D7] bg-[linear-gradient(135deg,#FFFCF9_0%,#FFF8F1_100%)] px-5 py-7 sm:px-8 sm:py-9 lg:px-10">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${status.className}`}
               >
                 {status.label}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F0FA] px-2.5 py-1 text-[11px] font-bold text-[#254F8F]">
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${categoryStyles[postData.category]}`}>
                 <FiBookOpen aria-hidden="true" />
                 {categoryLabels[postData.category]}
               </span>
             </div>
 
-            <h1 className="mt-5 text-2xl font-bold leading-tight tracking-tight text-[#1E3A5F] sm:text-3xl lg:text-4xl">
+            <h1 className="mt-5 max-w-4xl text-2xl font-bold leading-[1.3] tracking-[-0.025em] text-[#414750] sm:text-[2rem] lg:text-[2.25rem]">
               {postData.title.trim() || '無題の記事'}
             </h1>
             {postData.excerpt && (
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-[#66758A] sm:text-base">
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-[#71675F] sm:text-base">
                 {postData.excerpt}
               </p>
             )}
 
-            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-[#8491A2]">
+            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#EEE3D9] pt-4 text-xs font-medium text-[#8A8179]">
               <span className="flex items-center gap-1.5">
                 <FiClock aria-hidden="true" />
                 {dateFormatter.format(new Date(postData.updatedAt))} 更新
@@ -269,8 +280,8 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
 
           <div className="grid lg:grid-cols-[minmax(0,1fr)_220px]">
             <div className="min-w-0 px-5 py-8 sm:px-9 sm:py-10 lg:px-12">
-              <div className="mb-7 flex items-center gap-2 border-b border-[#E8EDF2] pb-4 text-sm font-bold text-[#1E3A5F]">
-                <FiFileText aria-hidden="true" className="text-[#254F8F]" />
+              <div className="mb-7 flex items-center gap-2 border-b border-[#EAE0D7] pb-4 text-sm font-bold text-[#4B4E54]">
+                <FiFileText aria-hidden="true" className="text-[#A66334]" />
                 記事本文
               </div>
 
@@ -377,12 +388,6 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
                   </button>
                 </div>
               </form>
-
-              {engagementError && (
-                <p className="mt-3 text-sm font-semibold text-[#A34F55]">
-                  {engagementError}
-                </p>
-              )}
 
               <div className="mt-6 space-y-3">
                 {postData.comments.length === 0 ? (
