@@ -177,9 +177,9 @@ const Header = () => {
       href: '/post',
       label: '自分の記事',
       icon: FiFileText,
-      isActive:
-        pathname === '/post' ||
-        (/^\/post\/[^/]+$/.test(pathname) && pathname !== '/post/new'),
+      // 記事詳細は他メンバーの記事でも同じURL構造になるため、
+      // 管理一覧そのものを表示している時だけ選択状態にする。
+      isActive: pathname === '/post',
       requiresLogin: true,
     },
     {

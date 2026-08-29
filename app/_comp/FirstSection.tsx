@@ -132,7 +132,7 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
               <span className="text-[#A66334]">すぐたどり着く。</span>
             </motion.h1>
             <motion.div variants={motionContainer.itemVariants}>
-              <p className="mt-5 max-w-lg text-sm leading-7 text-[#71685F] sm:text-base sm:leading-8">
+              <p className="mt-5 max-w-lg text-sm font-medium leading-7 text-[#57534F] sm:text-base sm:leading-8">
                 技術情報から日々の業務ノウハウまで、社内に散らばる経験を一か所へ。記事と、その分野に詳しいメンバーを一緒に見つけられます。
               </p>
             </motion.div>
