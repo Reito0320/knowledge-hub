@@ -76,21 +76,21 @@ export const getHomeData = async () => {
     featuredMembers,
   // 相互依存しない読み取りはtransactionで直列化せず、並列実行して待ち時間を短縮する。
   ] = await Promise.all([
-    prisma.post.count({ where: { status: 'PUBLISHED' } }),
+    prisma.post.count({ where: { status: 'PUBLISHED', visibility: 'ORGANIZATION' } }),
     prisma.user.count({
-      where: { posts: { some: { status: 'PUBLISHED' } } },
+      where: { posts: { some: { status: 'PUBLISHED', visibility: 'ORGANIZATION' } } },
     }),
     prisma.department.count({
       where: {
-        members: { some: { posts: { some: { status: 'PUBLISHED' } } } },
+        members: { some: { posts: { some: { status: 'PUBLISHED', visibility: 'ORGANIZATION' } } } },
       },
     }),
-    prisma.post.count({ where: { status: 'PUBLISHED', category: 'TECH' } }),
+    prisma.post.count({ where: { status: 'PUBLISHED', visibility: 'ORGANIZATION', category: 'TECH' } }),
     prisma.post.count({
-      where: { status: 'PUBLISHED', category: 'BUSINESS' },
+      where: { status: 'PUBLISHED', visibility: 'ORGANIZATION', category: 'BUSINESS' },
     }),
     prisma.post.findMany({
-      where: { status: 'PUBLISHED' },
+      where: { status: 'PUBLISHED', visibility: 'ORGANIZATION' },
       orderBy: [
         { likes: { _count: 'desc' } },
         { comments: { _count: 'desc' } },
@@ -100,21 +100,21 @@ export const getHomeData = async () => {
       select: postSelect,
     }),
     prisma.post.findMany({
-      where: { status: 'PUBLISHED' },
+      where: { status: 'PUBLISHED', visibility: 'ORGANIZATION' },
       orderBy: { publishedAt: 'desc' },
       take: 10,
       select: postSelect,
     }),
     prisma.tag.findMany({
       where: {
-        postTags: { some: { post: { status: 'PUBLISHED' } } },
+        postTags: { some: { post: { status: 'PUBLISHED', visibility: 'ORGANIZATION' } } },
       },
       orderBy: { postTags: { _count: 'desc' } },
       take: 8,
       select: { id: true, name: true, slug: true },
     }),
     prisma.user.findMany({
-      where: { posts: { some: { status: 'PUBLISHED' } } },
+      where: { posts: { some: { status: 'PUBLISHED', visibility: 'ORGANIZATION' } } },
       orderBy: { posts: { _count: 'desc' } },
       take: 6,
       select: {

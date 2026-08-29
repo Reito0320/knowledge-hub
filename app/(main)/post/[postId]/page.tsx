@@ -320,42 +320,28 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
                   この記事への反応
                 </h2>
               </div>
-              <button
-                type="button"
-                onClick={handleToggleLike}
-                disabled={isUpdatingLike}
-                aria-pressed={postData.likedByCurrentUser}
-                className={`inline-flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-bold transition disabled:opacity-60 ${
-                  postData.likedByCurrentUser
-                    ? 'border-[#E7B9C2] bg-[#FBECEF] text-[#A34F65]'
-                    : 'border-[#DDD6CF] bg-[#FCFAF7] text-[#66758A] hover:border-[#D99A70] hover:text-[#B26936]'
-                }`}
-              >
-                <FiHeart
-                  aria-hidden="true"
-                  className={postData.likedByCurrentUser ? 'fill-current' : ''}
-                />
-                {postData._count.likes}
-              </button>
-              <button
-                type="button"
-                onClick={handleToggleBookmark}
-                disabled={isUpdatingBookmark}
-                aria-pressed={postData.bookmarkedByCurrentUser}
-                className={`inline-flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-bold transition disabled:opacity-60 ${
-                  postData.bookmarkedByCurrentUser
-                    ? 'border-[#E5C9A9] bg-[#FCF3E8] text-[#9A5D2E]'
-                    : 'border-[#DDD6CF] bg-[#FCFAF7] text-[#66758A] hover:border-[#D99A70] hover:text-[#B26936]'
-                }`}
-              >
-                <FiBookmark
-                  aria-hidden="true"
-                  className={
-                    postData.bookmarkedByCurrentUser ? 'fill-current' : ''
-                  }
-                />
-                お気に入り {postData._count.bookmarks}
-              </button>
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleToggleLike}
+                  disabled={isUpdatingLike}
+                  aria-pressed={postData.likedByCurrentUser}
+                  className={`inline-flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-bold transition disabled:opacity-60 ${postData.likedByCurrentUser ? 'border-[#E7B9C2] bg-[#FBECEF] text-[#A34F65]' : 'border-[#DDD6CF] bg-[#FCFAF7] text-[#66758A] hover:border-[#D99A70] hover:text-[#B26936]'}`}
+                >
+                  <FiHeart aria-hidden="true" className={postData.likedByCurrentUser ? 'fill-current' : ''} />
+                  いいね {postData._count.likes}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleBookmark}
+                  disabled={isUpdatingBookmark}
+                  aria-pressed={postData.bookmarkedByCurrentUser}
+                  className={`inline-flex h-11 items-center gap-2 rounded-xl border px-4 text-sm font-bold transition disabled:opacity-60 ${postData.bookmarkedByCurrentUser ? 'border-[#E5C9A9] bg-[#FCF3E8] text-[#9A5D2E]' : 'border-[#DDD6CF] bg-[#FCFAF7] text-[#66758A] hover:border-[#D99A70] hover:text-[#B26936]'}`}
+                >
+                  <FiBookmark aria-hidden="true" className={postData.bookmarkedByCurrentUser ? 'fill-current' : ''} />
+                  お気に入り {postData._count.bookmarks}
+                </button>
+              </div>
             </div>
 
             <div className="mt-6">
@@ -375,7 +361,7 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
                   maxLength={1000}
                   rows={3}
                   placeholder="この記事への質問や補足を書いてください"
-                  className="w-full resize-y rounded-xl border border-[#DDD6CF] bg-[#FCFAF7] px-4 py-3 text-sm leading-6 text-[#344256] outline-none transition placeholder:text-[#A19A93] focus:border-[#B97845]/55 focus:bg-white focus:ring-3 focus:ring-[#B97845]/10"
+                  className="w-full resize-none rounded-xl border border-[#DDD6CF] bg-[#FCFAF7] px-4 py-3 text-sm leading-6 text-[#344256] outline-none transition placeholder:text-[#A19A93] focus:border-[#B97845]/55 focus:bg-white focus:ring-3 focus:ring-[#B97845]/10"
                 />
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <span className="text-xs text-[#948A80]">

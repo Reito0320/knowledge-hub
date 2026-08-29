@@ -54,7 +54,8 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
         };
         setKnowledgeSuggestions(data.posts);
       } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
+        if (error instanceof DOMException && error.name === 'AbortError')
+          return;
         console.error(error);
         setKnowledgeSuggestions([]);
       } finally {
@@ -162,8 +163,7 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
                   cardClass: 'border-[#D8DDED] bg-[#F5F6FB]',
                   iconClass: 'bg-[#E4E7F3] text-[#5D658E]',
                 },
-              ].map(
-                ({ icon: Icon, value, label, cardClass, iconClass }) => (
+              ].map(({ icon: Icon, value, label, cardClass, iconClass }) => (
                 <motion.div
                   variants={motionContainer.itemVariants}
                   key={label}
@@ -183,8 +183,7 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
                     </p>
                   </div>
                 </motion.div>
-                ),
-              )}
+              ))}
             </motion.div>
 
             <motion.div
@@ -203,7 +202,6 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
           </div>
         </section>
 
-        {/* TODO: useKnowledgeSearchでキーワード・カテゴリ・タグを管理し、検索APIと接続する */}
         <motion.div
           initial="hidden"
           animate="visible"

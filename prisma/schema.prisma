@@ -29,6 +29,18 @@ enum PostStatus {
   ARCHIVED
 }
 
+// 記事を誰に見せるかを投稿者自身が選択する。
+enum PostVisibility {
+  // ログイン中の全メンバー。通常の記事一覧にも表示する。
+  ORGANIZATION
+  // 一覧には表示せず、記事のURLを知っているメンバーだけが閲覧する。
+  LINK
+  // 投稿者と同じ部署に所属するメンバーだけが閲覧する。
+  DEPARTMENT
+  // 投稿者本人だけが閲覧する。
+  PRIVATE
+}
+
 // Cognitoユーザーと1対1で対応するアプリ利用者。
 // idにはCognito Access Tokenのsubを保存し、認証ユーザーを一意に結び付ける。
 model User {
@@ -84,7 +96,7 @@ model Department {
 // publishedAtは公開順、viewCountは人気記事の集計に利用する。
 model Post {
   /// 記事を識別するUUID。
-  id          String       @id @default(uuid())
+  id          String         @id @default(uuid())
   /// 一覧と詳細画面に表示する記事タイトル。
   title       String
   /// 記事一覧や検索結果に表示する短い概要。
@@ -92,17 +104,19 @@ model Post {
   /// Markdown形式で保存する記事本文。
   content     String
   /// 技術記事か業務記事かを表す分類。
-  category    PostCategory @default(TECH)
+  category    PostCategory   @default(TECH)
   /// 下書き・公開・アーカイブの公開状態。
-  status      PostStatus   @default(DRAFT)
+  status      PostStatus     @default(DRAFT)
+  /// 公開済み記事を閲覧できる範囲。
+  visibility  PostVisibility @default(ORGANIZATION)
   /// 人気記事の算出に利用する閲覧回数。
-  viewCount   Int          @default(0)
+  viewCount   Int            @default(0)
   /// 記事を公開した日時。下書きではnull。
   publishedAt DateTime?
   /// 投稿者を参照する外部キー。
   authorId    String
   /// authorIdに対応する投稿者。
-  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   /// 記事に投稿されたコメント。
   comments    Comment[]
   /// 記事に付けられたいいね。
@@ -112,12 +126,13 @@ model Post {
   /// 記事に設定されたタグとの関連。
   postTags    PostTag[]
   /// 記事を作成した日時。
-  createdAt   DateTime     @default(now())
+  createdAt   DateTime       @default(now())
   /// 記事を最後に更新した日時。
-  updatedAt   DateTime     @updatedAt
+  updatedAt   DateTime       @updatedAt
 
   @@index([authorId, createdAt])
   @@index([status, category, publishedAt])
+  @@index([status, visibility, publishedAt])
 }
 
 // 記事の分類・検索に使うタグ。slugはURLクエリで安全に扱う識別子。

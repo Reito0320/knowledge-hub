@@ -2,6 +2,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user';
 import { createPostTagData } from '@/lib/post/create-post-tag-data';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { canViewPost, isPostVisibility } from '@/lib/post/post-visibility';
 
 type RouteContext = {
   params: Promise<{
@@ -24,7 +25,8 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
       );
     const { postId } = await params;
 
-    const targetPost = await prisma.post.findUnique({
+    const [targetPost, viewer] = await Promise.all([
+      prisma.post.findUnique({
       where: {
         id: postId,
       },
@@ -34,10 +36,12 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
         content: true,
         category: true,
         status: true,
+        visibility: true,
         viewCount: true,
         publishedAt: true,
         updatedAt: true,
         authorId: true,
+        author: { select: { departmentId: true } },
         postTags: {
           select: {
             tag: {
@@ -73,7 +77,12 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
         },
         _count: { select: { likes: true, comments: true, bookmarks: true } },
       },
-    });
+      }),
+      prisma.user.findUnique({
+        where: { id: currentUserId },
+        select: { id: true, departmentId: true },
+      }),
+    ]);
 
     if (!targetPost)
       return NextResponse.json(
@@ -84,9 +93,15 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
         { status: 404 },
       );
 
+    if (!viewer)
+      return NextResponse.json(
+        { message: 'ユーザー情報が見つかりません。', targetPost: null },
+        { status: 401 },
+      );
+
     const canEdit = targetPost.authorId === currentUserId;
 
-    if (targetPost.status !== 'PUBLISHED' && !canEdit)
+    if (!canViewPost(targetPost, viewer))
       return NextResponse.json(
         {
           message: 'この記事を閲覧する権限がありません。',
@@ -104,6 +119,7 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
         bookmarkedByCurrentUser: targetPost.bookmarks.length > 0,
         likes: undefined,
         bookmarks: undefined,
+        author: undefined,
       },
     });
   } catch (error) {
@@ -147,7 +163,7 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
       );
 
     const { postId } = await params;
-    const { title, excerpt, content, category, tags, publish } =
+    const { title, excerpt, content, category, visibility, tags, publish } =
       await req.json();
     const shouldPublish = publish === true;
 
@@ -155,6 +171,7 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
       typeof title !== 'string' ||
       typeof content !== 'string' ||
       (category !== 'TECH' && category !== 'BUSINESS') ||
+      !isPostVisibility(visibility) ||
       !Array.isArray(tags)
     )
       return NextResponse.json(
@@ -196,6 +213,7 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
         excerpt: typeof excerpt === 'string' ? excerpt.trim() || null : null,
         content,
         category,
+        visibility,
         ...(shouldPublish
           ? {
               status: 'PUBLISHED' as const,

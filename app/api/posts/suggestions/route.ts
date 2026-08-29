@@ -14,9 +14,24 @@ export const GET = async (request: NextRequest) => {
     const keyword = request.nextUrl.searchParams.get('q')?.trim() ?? '';
     if (!keyword) return NextResponse.json({ posts: [] });
 
+    const viewer = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { departmentId: true },
+    });
+
     const posts = await prisma.post.findMany({
       where: {
         status: 'PUBLISHED',
+        AND: [
+          {
+            OR: [
+              { visibility: 'ORGANIZATION' },
+              ...(viewer?.departmentId
+                ? [{ visibility: 'DEPARTMENT' as const, author: { departmentId: viewer.departmentId } }]
+                : []),
+            ],
+          },
+        ],
         OR: [
           { title: { contains: keyword, mode: 'insensitive' } },
           { excerpt: { contains: keyword, mode: 'insensitive' } },

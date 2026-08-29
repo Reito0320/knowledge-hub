@@ -13,6 +13,10 @@ import {
   FiPlus,
   FiTag,
   FiTrash2,
+  FiGlobe,
+  FiLink,
+  FiUsers,
+  FiLock,
 } from 'react-icons/fi';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import { postStatusCounter } from './post';
@@ -37,6 +41,13 @@ const statusStyles = {
 const categoryLabels = {
   TECH: '技術ブログ',
   BUSINESS: '業務・カルチャー',
+} as const;
+
+const visibilityStyles = {
+  ORGANIZATION: { label: '社内全員', icon: FiGlobe, className: 'bg-[#E8F1EC] text-[#39745A]' },
+  LINK: { label: 'リンク限定', icon: FiLink, className: 'bg-[#FFF1E4] text-[#9A5D2E]' },
+  DEPARTMENT: { label: '同じ部署', icon: FiUsers, className: 'bg-[#EEEAF7] text-[#66508D]' },
+  PRIVATE: { label: '自分のみ', icon: FiLock, className: 'bg-[#F2EEEE] text-[#735F62]' },
 } as const;
 
 const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
@@ -160,6 +171,8 @@ const PostPage = () => {
 
             {posts.map((post) => {
               const status = statusStyles[post.status];
+              const visibility = visibilityStyles[post.visibility];
+              const VisibilityIcon = visibility.icon;
 
               return (
                 <article
@@ -177,6 +190,10 @@ const PostPage = () => {
                         </span>
                         <span className="text-xs font-semibold text-[#6C7A8C]">
                           {categoryLabels[post.category]}
+                        </span>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${visibility.className}`}>
+                          <VisibilityIcon aria-hidden="true" />
+                          {visibility.label}
                         </span>
                         <span className="flex items-center gap-1 text-xs text-[#98A4B3]">
                           <FiClock aria-hidden="true" />

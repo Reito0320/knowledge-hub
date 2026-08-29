@@ -14,6 +14,7 @@ import {
   FiTag,
 } from 'react-icons/fi';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
+import MemberSearchControls from './_components/MemberSearchControls';
 
 type SearchParamValue = string | string[] | undefined;
 
@@ -55,17 +56,21 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
   const member = getFirstSearchParam(params.member);
   const memberId = getFirstSearchParam(params.memberId);
   const tag = getFirstSearchParam(params.tag);
-  const isMemberDirectory = !keyword && !category && !tag && !member;
+  const isMemberDirectory = !keyword && !tag;
 
   const currentUserId = await getCurrentUser();
   if (!currentUserId) redirect('/login');
+  const viewer = await prisma.user.findUnique({
+    where: { id: currentUserId },
+    select: { departmentId: true },
+  });
 
   const selectedCategory =
     category === 'TECH' || category === 'BUSINESS' ? category : '';
 
   // Headerからメンバー名が送られた場合だけ、Userとその公開記事を取得する。
   // 下書きやアーカイブは投稿者以外へ公開しない。
-  const members = member || isMemberDirectory
+  const members = isMemberDirectory
     ? await prisma.user.findMany({
         where: {
           // 検索結果にもログイン中の本人を含めない。
@@ -102,6 +107,12 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
           posts: {
             where: {
               status: 'PUBLISHED',
+              OR: [
+                { visibility: 'ORGANIZATION' },
+                ...(viewer?.departmentId
+                  ? [{ visibility: 'DEPARTMENT' as const, author: { departmentId: viewer.departmentId } }]
+                  : []),
+              ],
               ...(selectedCategory
                 ? { category: selectedCategory }
                 : {}),
@@ -146,14 +157,6 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
     0,
   );
 
-  const createCategoryHref = (nextCategory: '' | 'TECH' | 'BUSINESS') => {
-    const nextParams = new URLSearchParams();
-    nextParams.set('member', member);
-    if (memberId) nextParams.set('memberId', memberId);
-    if (nextCategory) nextParams.set('category', nextCategory);
-    return '/search?' + nextParams.toString();
-  };
-
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-[#F7F6F3] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
       <div className="mx-auto max-w-6xl">
@@ -162,7 +165,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
             <FiSearch aria-hidden="true" />
             Member Search
           </div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#1E3A5F] sm:text-3xl">
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#454A52] sm:text-3xl">
             メンバーの投稿を探す
           </h1>
           <p className="mt-2 text-sm text-[#7B8899]">
@@ -171,38 +174,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
               : '社内のメンバーと、それぞれが公開しているナレッジを一覧で確認できます。'}
           </p>
         </header>
-
-        {member && (
-          <nav
-            aria-label="記事カテゴリ"
-            className="mt-6 flex w-fit flex-wrap gap-2 rounded-xl border border-[#DDE4EC] bg-white p-1.5"
-          >
-            {[
-              { value: '', label: 'すべて' },
-              { value: 'TECH', label: '技術ブログ' },
-              { value: 'BUSINESS', label: '業務・カルチャー' },
-            ].map((item) => {
-              const isSelected = selectedCategory === item.value;
-
-              return (
-                <Link
-                  key={item.value || 'ALL'}
-                  href={createCategoryHref(
-                    item.value as '' | 'TECH' | 'BUSINESS',
-                  )}
-                  aria-current={isSelected ? 'page' : undefined}
-                  className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
-                    isSelected
-                      ? 'bg-[#254F8F] text-white shadow-sm'
-                      : 'text-[#66758A] hover:bg-[#F1F5F9] hover:text-[#254F8F]'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        )}
+        <MemberSearchControls member={member} memberId={memberId} category={selectedCategory} />
 
         {members.length === 0 ? (
           <section className="mt-7 flex min-h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E0] bg-white px-6 text-center">

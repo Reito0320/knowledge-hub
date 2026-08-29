@@ -1,6 +1,22 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import rehypeSanitize from 'rehype-sanitize';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import rehypeRaw from 'rehype-raw';
+
+const colorClasses: Record<string, string> = {
+  orange: 'text-[#B66A36]',
+  green: 'text-[#39745A]',
+  blue: 'text-[#356A92]',
+  red: 'text-[#B6534D]',
+};
+
+const markdownSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    span: [...(defaultSchema.attributes?.span ?? []), 'dataColor'],
+  },
+};
 
 type MarkdownRendererProps = {
   content: string;
@@ -10,15 +26,15 @@ const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeSanitize]}
+      rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
       components={{
         h1: ({ children }) => (
-          <h1 className="mb-5 mt-10 border-b border-[#DDE4EC] pb-3 text-3xl font-bold text-[#1E3A5F]">
+          <h1 className="mb-5 mt-10 border-b border-[#E7D8CB] pb-3 text-3xl font-bold text-[#3E4652]">
             {children}
           </h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-4 mt-9 border-b border-[#E8EDF2] pb-2 text-2xl font-bold text-[#1E3A5F]">
+          <h2 className="mb-4 mt-9 border-b border-[#EFE2D6] pb-2 text-2xl font-bold text-[#75492E]">
             {children}
           </h2>
         ),
@@ -41,7 +57,7 @@ const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
           </ol>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="my-6 border-l-4 border-[#254F8F] bg-[#EEF4FB] px-5 py-3 text-[#52677F]">
+          <blockquote className="my-6 border-l-4 border-[#C47A45] bg-[#FFF6ED] px-5 py-3 text-[#6F5B4C]">
             {children}
           </blockquote>
         ),
@@ -88,6 +104,11 @@ const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
           </td>
         ),
         hr: () => <hr className="my-8 border-[#DDE4EC]" />,
+        span: ({ node, children }) => {
+          const color = node?.properties?.dataColor;
+          const colorName = typeof color === 'string' ? color : '';
+          return <span className={colorClasses[colorName]}>{children}</span>;
+        },
       }}
     >
       {content}

@@ -4,6 +4,7 @@ export type PostDetailData = {
   content: string;
   category: 'TECH' | 'BUSINESS';
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  visibility: 'ORGANIZATION' | 'LINK' | 'DEPARTMENT' | 'PRIVATE';
   viewCount: number;
   publishedAt: string | null;
   updatedAt: string;
@@ -41,6 +42,7 @@ type UpdatePostData = {
   excerpt?: string;
   content: string;
   category: 'TECH' | 'BUSINESS';
+  visibility: 'ORGANIZATION' | 'LINK' | 'DEPARTMENT' | 'PRIVATE';
   tags: Array<
     | { type: 'existing'; id: string; name: string; slug: string }
     | { type: 'new'; name: string }

@@ -22,6 +22,10 @@ export type SelectedTag =
 
 import MarkdownRenderer from '@/comp/MarkdownRender';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
+import { continueMarkdownList } from '@/lib/markdown/continue-list';
+import type { PostVisibility } from '@/lib/post/post-visibility';
+import VisibilitySelector from './_components/VisibilitySelector';
+import TextColorPicker, { type MarkdownTextColor } from './_components/TextColorPicker';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -29,7 +33,6 @@ import {
   FiBookOpen,
   FiCheck,
   FiChevronDown,
-  FiClock,
   FiCode,
   FiEdit3,
   FiEye,
@@ -55,6 +58,7 @@ export type PostEditorInitialData = {
   excerpt: string;
   content: string;
   category: 'TECH' | 'BUSINESS';
+  visibility: PostVisibility;
   tags: SelectedTag[];
 };
 
@@ -80,6 +84,9 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
   const [category, setCategory] = useState<'TECH' | 'BUSINESS'>(
     initialData?.category ?? 'TECH',
   );
+  const [visibility, setVisibility] = useState<PostVisibility>(
+    initialData?.visibility ?? 'ORGANIZATION',
+  );
   const [tagName, setTagName] = useState<string>('');
   const [tagSuggestList, setTagSuggestList] = useState<TagSuggestion[]>([]);
   const [selectedTagList, setSelectedTagList] = useState<SelectedTag[]>(
@@ -93,6 +100,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
       excerpt: initialData?.excerpt ?? '',
       content: initialData?.content ?? '',
       category: initialData?.category ?? 'TECH',
+      visibility: initialData?.visibility ?? 'ORGANIZATION',
       tags: initialData?.tags ?? [],
     }),
   );
@@ -304,12 +312,28 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     });
   };
 
+  const applyTextColor = (color: MarkdownTextColor) => {
+    const textarea = contentTextareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = content.slice(start, end) || '色を付ける文字';
+    const openingTag = `<span data-color="${color}">`;
+    const replacement = `${openingTag}${text}</span>`;
+    setContent(content.slice(0, start) + replacement + content.slice(end));
+    window.requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + openingTag.length, start + openingTag.length + text.length);
+    });
+  };
+
   useEffect(() => {
     const cashData = JSON.stringify({
       title,
       excerpt,
       content,
       category,
+      visibility,
       tags: selectedTagList,
     });
     localStorage.setItem(storageKey, cashData);
@@ -331,6 +355,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     excerpt,
     content,
     category,
+    visibility,
     selectedTagList,
   ]);
 
@@ -399,8 +424,8 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
               aria-pressed={editorMode === 'edit'}
               className={`flex h-12 items-center gap-2 border-b-2 px-3 text-sm transition ${
                 editorMode === 'edit'
-                  ? 'border-[#254F8F] font-bold text-[#254F8F]'
-                  : 'border-transparent font-semibold text-[#7B8899] hover:text-[#254F8F]'
+                  ? 'border-[#B66A36] font-bold text-[#99582E]'
+                  : 'border-transparent font-semibold text-[#7B746E] hover:text-[#99582E]'
               }`}
             >
               <FiEdit3 aria-hidden="true" />
@@ -412,18 +437,14 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
               aria-pressed={editorMode === 'preview'}
               className={`flex h-12 items-center gap-2 border-b-2 px-3 text-sm transition ${
                 editorMode === 'preview'
-                  ? 'border-[#254F8F] font-bold text-[#254F8F]'
-                  : 'border-transparent font-semibold text-[#7B8899] hover:text-[#254F8F]'
+                  ? 'border-[#B66A36] font-bold text-[#99582E]'
+                  : 'border-transparent font-semibold text-[#7B746E] hover:text-[#99582E]'
               }`}
             >
               <FiEye aria-hidden="true" />
               プレビュー
             </button>
           </div>
-          <span className="hidden items-center gap-1.5 text-xs text-[#8A97A8] sm:flex">
-            <FiClock aria-hidden="true" />
-            未保存
-          </span>
         </div>
 
         {editorMode === 'edit' && (
@@ -441,6 +462,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                 <Icon aria-hidden="true" />
               </motion.button>
             ))}
+            <TextColorPicker onSelect={applyTextColor} />
             <span className="ml-auto hidden rounded-md bg-[#EEF2F6] px-2 py-1 font-mono text-[10px] font-semibold text-[#788698] sm:inline">
               Markdown
             </span>
@@ -460,6 +482,29 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                 spellCheck="false"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
+                onKeyDown={(event) => {
+                  // 日本語変換の確定EnterとShift+Enterは通常入力に任せる。
+                  if (
+                    event.key !== 'Enter' ||
+                    event.shiftKey ||
+                    event.nativeEvent.isComposing
+                  )
+                    return;
+                  const textarea = event.currentTarget;
+                  const result = continueMarkdownList(
+                    textarea.value,
+                    textarea.selectionStart,
+                    textarea.selectionEnd,
+                  );
+                  if (!result) return;
+
+                  event.preventDefault();
+                  setContent(result.content);
+                  window.requestAnimationFrame(() => {
+                    textarea.focus();
+                    textarea.setSelectionRange(result.cursor, result.cursor);
+                  });
+                }}
                 placeholder={`## 見出し\n\n共有したい知識や経験をMarkdownで書いてみましょう。\n\n- 背景や困っていたこと\n- 試したこと\n- 解決方法と学び`}
                 className="min-h-130 w-full resize-y bg-white px-5 py-6 pb-16 font-mono text-sm leading-7 text-[#344256] outline-none placeholder:text-[#A7B1BE] sm:px-7 lg:min-h-147.5"
               />
@@ -487,6 +532,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
         transition={{ duration: 0.45, delay: 0.08, ease: 'easeOut' }}
         className="space-y-5 xl:sticky xl:top-22"
       >
+        <VisibilitySelector value={visibility} onChange={setVisibility} />
         <section className="rounded-2xl border border-[#DDE4EC] bg-white p-5">
           <div className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F]">
             <FiBookOpen aria-hidden="true" className="text-[#254F8F]" />

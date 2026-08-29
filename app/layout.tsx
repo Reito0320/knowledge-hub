@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Knowledge Hub | 社内ナレッジ共有',
+  title: 'Knowledge-Hub',
   description: '社内の知識と、詳しいメンバーが見つかる情報共有ツール',
 };
 

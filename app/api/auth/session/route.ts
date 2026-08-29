@@ -41,6 +41,8 @@ export const GET = async () => {
         name: true,
         email: true,
         photoUrl: true,
+        jobTitle: true,
+        bio: true,
         department: { select: { id: true, name: true } },
       },
     });

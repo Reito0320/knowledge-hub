@@ -1,6 +1,7 @@
 import { getCurrentUser } from '@/lib/auth/get-current-user';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { canUserViewPost } from '@/lib/post/can-user-view-post';
 
 type RouteContext = { params: Promise<{ postId: string }> };
 
@@ -10,11 +11,7 @@ export const POST = async (_request: Request, { params }: RouteContext) => {
     return NextResponse.json({ message: 'ログインが必要です。' }, { status: 401 });
 
   const { postId } = await params;
-  const post = await prisma.post.findFirst({
-    where: { id: postId, status: 'PUBLISHED' },
-    select: { id: true },
-  });
-  if (!post)
+  if (!(await canUserViewPost(postId, userId)))
     return NextResponse.json({ message: '公開記事が見つかりません。' }, { status: 404 });
 
   const existing = await prisma.bookmark.findUnique({

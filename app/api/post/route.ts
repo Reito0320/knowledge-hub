@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { createPostTagData } from '@/lib/post/create-post-tag-data';
 import { getCurrentUser } from '@/lib/auth/get-current-user';
+import { isPostVisibility } from '@/lib/post/post-visibility';
 
 export const POST = async (req: NextRequest) => {
   try {
@@ -15,7 +16,7 @@ export const POST = async (req: NextRequest) => {
         { status: 401 },
       );
 
-    const { title, excerpt, content, category, tags, publish } =
+    const { title, excerpt, content, category, visibility, tags, publish } =
       await req.json();
     const shouldPublish = publish === true;
 
@@ -23,6 +24,7 @@ export const POST = async (req: NextRequest) => {
       typeof title !== 'string' ||
       typeof content !== 'string' ||
       (category !== 'TECH' && category !== 'BUSINESS') ||
+      !isPostVisibility(visibility) ||
       !Array.isArray(tags)
     )
       return NextResponse.json(
@@ -44,6 +46,7 @@ export const POST = async (req: NextRequest) => {
         excerpt: typeof excerpt === 'string' ? excerpt.trim() || null : null,
         content,
         category,
+        visibility,
         status: shouldPublish ? 'PUBLISHED' : 'DRAFT',
         publishedAt: shouldPublish ? new Date() : null,
         authorId: currentUserId,
@@ -98,6 +101,7 @@ export const GET = async () => {
         excerpt: true,
         category: true,
         status: true,
+        visibility: true,
         viewCount: true,
         publishedAt: true,
         updatedAt: true,

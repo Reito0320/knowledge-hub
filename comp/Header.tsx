@@ -13,9 +13,10 @@ import {
   FiFileText,
   FiLogIn,
   FiLogOut,
-  FiSearch,
   FiUpload,
   FiX,
+  FiActivity,
+  FiUsers,
 } from 'react-icons/fi';
 import {
   fetchDeleteSession,
@@ -23,28 +24,12 @@ import {
   type SessionUser,
 } from '@/app/api/auth/session/fetch';
 
-type MemberSuggestion = {
-  id: string;
-  name: string;
-  email: string;
-  jobTitle: string | null;
-  department: {
-    name: string;
-  } | null;
-};
-
 type DepartmentOption = { id: string; name: string };
 
 const Header = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<SessionUser | null>(null);
-  const [searchMember, setSearchMember] = useState<string>('');
-  const [memberSuggestions, setMemberSuggestions] = useState<
-    MemberSuggestion[]
-  >([]);
-  const [isSearchingMember, setIsSearchingMember] =
-    useState<boolean>(false);
   const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
   const [hasImageError, setHasImageError] = useState<boolean>(false);
@@ -54,6 +39,9 @@ const Header = () => {
   const [profileNotice, setProfileNotice] = useState('');
   const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+  const [profileName, setProfileName] = useState('');
+  const [profileJobTitle, setProfileJobTitle] = useState('');
+  const [profileBio, setProfileBio] = useState('');
   const profileFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -64,6 +52,9 @@ const Header = () => {
         const sessionUser = await fetchGetSession();
         setUser(sessionUser);
         setSelectedDepartmentId(sessionUser?.department?.id ?? '');
+        setProfileName(sessionUser?.name ?? '');
+        setProfileJobTitle(sessionUser?.jobTitle ?? '');
+        setProfileBio(sessionUser?.bio ?? '');
         setHasImageError(false);
       } catch (error) {
         console.error('Sessionの確認に失敗しました:', error);
@@ -75,42 +66,6 @@ const Header = () => {
 
     void checkSession();
   }, []);
-
-  useEffect(() => {
-    const keyword = searchMember.trim();
-
-    if (!keyword || !user) return;
-
-    const abortController = new AbortController();
-
-    // 入力のたびにAPIを呼ばず、250ms入力が止まってから候補を取得する。
-    const timeoutId = window.setTimeout(async () => {
-      setIsSearchingMember(true);
-
-      try {
-        const response = await fetch(
-          '/api/users/suggestions?q=' + encodeURIComponent(keyword),
-          { signal: abortController.signal },
-        );
-
-        if (!response.ok) throw new Error('メンバー候補を取得できません。');
-
-        const data: { users: MemberSuggestion[] } = await response.json();
-        setMemberSuggestions(data.users);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        console.error(error);
-        setMemberSuggestions([]);
-      } finally {
-        if (!abortController.signal.aborted) setIsSearchingMember(false);
-      }
-    }, 250);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      abortController.abort();
-    };
-  }, [searchMember, user]);
 
   useEffect(() => {
     if (!isProfileModalOpen) return;
@@ -165,7 +120,12 @@ const Header = () => {
       const response = await fetch('/api/users/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ departmentId: selectedDepartmentId || null }),
+        body: JSON.stringify({
+          name: profileName,
+          jobTitle: profileJobTitle,
+          bio: profileBio,
+          departmentId: selectedDepartmentId || null,
+        }),
       });
       if (!response.ok) throw new Error('プロフィールを更新できませんでした。');
 
@@ -173,7 +133,7 @@ const Header = () => {
       setUser(data.user);
 
       if (!profileImageFile) {
-        setProfileNotice('部署を更新しました。');
+        setProfileNotice('プロフィールを更新しました。');
         return;
       }
 
@@ -201,38 +161,15 @@ const Header = () => {
       setIsSigningOut(false);
     }
   };
-  const handleSearchMember = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const trimSearchMember = searchMember.trim();
-    if (!trimSearchMember) return;
-    router.push('/search?member=' + encodeURIComponent(trimSearchMember));
-    setMemberSuggestions([]);
-    setSearchMember('');
-  };
-
-  const handleMemberInputChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const nextValue = event.target.value;
-    setSearchMember(nextValue);
-    // 前の入力に対する候補を残さず、現在の文字列の検索完了を待つ。
-    setMemberSuggestions([]);
-    setIsSearchingMember(Boolean(nextValue.trim()));
-  };
-
-  const handleSelectMember = (member: MemberSuggestion) => {
-    const params = new URLSearchParams({
-      member: member.name,
-      memberId: member.id,
-    });
-
-    router.push('/search?' + params.toString());
-    setMemberSuggestions([]);
-    setSearchMember('');
-  };
-
   const initials = user?.name.trim().slice(0, 1).toUpperCase() || 'U';
   const navigationItems = [
+    {
+      href: '/search',
+      label: 'メンバー',
+      icon: FiUsers,
+      isActive: pathname === '/search',
+      requiresLogin: true,
+    },
     {
       href: '/post',
       label: '自分の記事',
@@ -247,6 +184,13 @@ const Header = () => {
       label: 'お気に入り',
       icon: FiBookmark,
       isActive: pathname === '/bookmarks',
+      requiresLogin: true,
+    },
+    {
+      href: '/activity',
+      label: '履歴',
+      icon: FiActivity,
+      isActive: pathname === '/activity',
       requiresLogin: true,
     },
     {
@@ -273,8 +217,8 @@ const Header = () => {
               aria-current={isActive ? 'page' : undefined}
               className={`inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F] ${
                 isActive
-                  ? 'bg-[#E8F0FA] text-[#254F8F]'
-                  : 'text-[#66758A] hover:bg-[#F3F6F9] hover:text-[#254F8F]'
+                  ? 'bg-[#FFF0E2] text-[#9A5B31]'
+                  : 'text-[#6F6B66] hover:bg-[#FCF5EE] hover:text-[#9A5B31]'
               }`}
             >
               <Icon aria-hidden="true" className="size-4 shrink-0" />
@@ -321,71 +265,7 @@ const Header = () => {
           <div className="hidden lg:block">{navigation}</div>
         </div>
 
-        <form
-          onSubmit={handleSearchMember}
-          className="relative col-span-3 row-start-2 h-10 min-w-0 w-full lg:col-auto lg:row-auto lg:ml-auto lg:max-w-72 xl:max-w-96"
-        >
-          <label htmlFor="header-search" className="sr-only">
-            メンバーを検索
-          </label>
-          <input
-            id="header-search"
-            type="search"
-            placeholder="メンバー検索"
-            onChange={handleMemberInputChange}
-            value={searchMember}
-            autoComplete="off"
-            className="h-full w-full rounded-xl border border-[#DDE4EC] bg-[#F8FAFC] pl-3 pr-10 text-xs text-[#344256] outline-none transition placeholder:text-[#9AA7B7] focus:border-[#254F8F]/50 focus:ring-2 focus:ring-[#254F8F]/10 sm:pr-20 sm:text-sm"
-          />
-          <button
-            type="submit"
-            aria-label="メンバーを検索"
-            className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg bg-[#254F8F] text-xs font-bold text-white transition hover:bg-[#1E3A5F] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#254F8F] sm:h-8 sm:w-auto sm:px-3"
-          >
-            <FiSearch aria-hidden="true" className="size-4 sm:hidden" />
-            <span className="hidden sm:inline">検索</span>
-          </button>
-
-          {searchMember.trim() && user && (
-            <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] overflow-hidden rounded-xl border border-[#DDE4EC] bg-white shadow-[0_16px_35px_rgba(30,58,95,0.14)]">
-              {isSearchingMember ? (
-                <p className="px-4 py-3 text-xs text-[#7B8899]">
-                  メンバーを検索中...
-                </p>
-              ) : memberSuggestions.length > 0 ? (
-                <ul aria-label="メンバーの検索候補">
-                  {memberSuggestions.map((member) => (
-                    <li key={member.id}>
-                      <button
-                        type="button"
-                        onClick={() => handleSelectMember(member)}
-                        className="flex w-full items-center gap-3 border-b border-[#EEF1F4] px-3 py-3 text-left transition last:border-b-0 hover:bg-[#F5F8FC] focus-visible:bg-[#F5F8FC] focus-visible:outline-none"
-                      >
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#E8F0FA] text-xs font-bold text-[#254F8F]">
-                          {member.name.trim().slice(0, 1) || 'U'}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-bold text-[#344256]">
-                            {member.name}
-                          </span>
-                          <span className="block truncate text-xs text-[#7B8899]">
-                            {member.department?.name ??
-                              member.jobTitle ??
-                              member.email}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="px-4 py-3 text-xs text-[#7B8899]">
-                  一致するメンバーはいません。
-                </p>
-              )}
-            </div>
-          )}
-        </form>
+        <div aria-hidden="true" className="min-w-0 flex-1" />
 
         <div className="col-start-3 row-start-1 flex shrink-0 items-center gap-2 sm:gap-3">
           {isCheckingSession ? (
@@ -410,6 +290,10 @@ const Header = () => {
                   onClick={() => {
                     setIsProfileModalOpen(true);
                     setProfileNotice('');
+                    setProfileName(user.name);
+                    setProfileJobTitle(user.jobTitle ?? '');
+                    setProfileBio(user.bio ?? '');
+                    setSelectedDepartmentId(user.department?.id ?? '');
                   }}
                   aria-label={`${user.name}のプロフィール設定を開く`}
                   className="flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F]"
@@ -490,7 +374,7 @@ const Header = () => {
               role="dialog"
               aria-modal="true"
               aria-labelledby="profile-modal-title"
-              className="w-full max-w-md rounded-2xl border border-[#DDE4EC] bg-white p-6 shadow-[0_24px_70px_rgba(20,38,61,0.24)]"
+              className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#DDE4EC] bg-white p-6 shadow-[0_24px_70px_rgba(20,38,61,0.24)]"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -501,7 +385,7 @@ const Header = () => {
                     id="profile-modal-title"
                     className="mt-1 text-xl font-bold text-[#1E3A5F]"
                   >
-                    プロフィール画像を設定
+                    プロフィールを編集
                   </h2>
                 </div>
                 <button
@@ -544,6 +428,27 @@ const Header = () => {
                 onChange={handleProfileImageChange}
                 className="sr-only"
               />
+              <div className="mt-5 space-y-4">
+                <div>
+                  <label htmlFor="profile-name" className="mb-2 block text-sm font-bold text-[#344256]">
+                    表示名 <span className="text-[#B6534D]">*</span>
+                  </label>
+                  <input id="profile-name" value={profileName} onChange={(event) => setProfileName(event.target.value)} maxLength={50} className="h-11 w-full rounded-xl border border-[#D8E0E9] bg-[#FCFAF7] px-3 text-sm text-[#344256] outline-none focus:border-[#B97845]/50" />
+                </div>
+                <div>
+                  <label htmlFor="profile-job-title" className="mb-2 block text-sm font-bold text-[#344256]">
+                    役職・担当 <span className="font-normal text-[#8A97A8]">任意</span>
+                  </label>
+                  <input id="profile-job-title" value={profileJobTitle} onChange={(event) => setProfileJobTitle(event.target.value)} maxLength={80} placeholder="例：フロントエンドエンジニア" className="h-11 w-full rounded-xl border border-[#D8E0E9] bg-[#FCFAF7] px-3 text-sm text-[#344256] outline-none placeholder:text-[#A59B92] focus:border-[#B97845]/50" />
+                </div>
+                <div>
+                  <label htmlFor="profile-bio" className="mb-2 block text-sm font-bold text-[#344256]">
+                    自己紹介・得意分野 <span className="font-normal text-[#8A97A8]">任意</span>
+                  </label>
+                  <textarea id="profile-bio" value={profileBio} onChange={(event) => setProfileBio(event.target.value)} maxLength={500} rows={4} placeholder="担当業務、詳しい技術、相談してほしいことなど" className="w-full resize-none rounded-xl border border-[#D8E0E9] bg-[#FCFAF7] px-3 py-2.5 text-sm leading-6 text-[#344256] outline-none placeholder:text-[#A59B92] focus:border-[#B97845]/50" />
+                  <p className="mt-1 text-right text-xs text-[#9A9087]">{profileBio.length} / 500</p>
+                </div>
+              </div>
               <div className="mt-5">
                 <label
                   htmlFor="profile-department"
@@ -588,7 +493,7 @@ const Header = () => {
               <button
                 type="button"
                 onClick={handleSaveProfileImage}
-                className="mt-5 h-11 w-full rounded-xl bg-[#254F8F] text-sm font-bold text-white transition hover:bg-[#1E3A5F]"
+                className="mt-5 h-11 w-full rounded-xl bg-[#A66334] text-sm font-bold text-white transition hover:bg-[#86502D]"
               >
                 変更を保存
               </button>

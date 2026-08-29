@@ -89,6 +89,7 @@ const EditPostPage = ({ params }: EditPostPageProps) => {
         excerpt: post.excerpt ?? '',
         content: post.content,
         category: post.category,
+        visibility: post.visibility,
         tags: post.postTags.map(({ tag }) => ({
           type: 'existing' as const,
           id: tag.id,
