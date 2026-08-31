@@ -1,5 +1,4 @@
-import { verifyCognitoAccessToken } from '@/lib/amplify/cognito-verify-access-token';
-import { getCognitoUser } from '@/lib/amplify/get-cognito-user';
+import { verifyCognitoAccessToken } from '@/lib/AWS/cognito-verify-access-token';
 import { deleteCookie, getCookie } from '@/lib/cookie';
 import { decrypt } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
