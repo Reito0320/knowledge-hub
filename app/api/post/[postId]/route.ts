@@ -3,6 +3,7 @@ import { createPostTagData } from '@/lib/post/create-post-tag-data';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { canViewPost, isPostVisibility } from '@/lib/post/post-visibility';
+import { createProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
 
 type RouteContext = {
   params: Promise<{
@@ -61,7 +62,7 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
             content: true,
             createdAt: true,
             author: {
-              select: { id: true, name: true, photoUrl: true },
+              select: { id: true, name: true, photoObjectKey: true },
             },
           },
         },
@@ -110,10 +111,32 @@ export const GET = async (_req: NextRequest, { params }: RouteContext) => {
         { status: 403 },
       );
 
+    const comments = await Promise.all(
+      targetPost.comments.map(async (comment) => {
+        let photoUrl: string | null = null;
+
+        if (comment.author.photoObjectKey) {
+          photoUrl = await createProfileImageViewUrl(
+            comment.author.photoObjectKey,
+          );
+        }
+
+        return {
+          ...comment,
+          author: {
+            id: comment.author.id,
+            name: comment.author.name,
+            photoUrl,
+          },
+        };
+      }),
+    );
+
     return NextResponse.json({
       message: '一件検索の記事取得ができました。',
       targetPost: {
         ...targetPost,
+        comments,
         canEdit,
         likedByCurrentUser: targetPost.likes.length > 0,
         bookmarkedByCurrentUser: targetPost.bookmarks.length > 0,

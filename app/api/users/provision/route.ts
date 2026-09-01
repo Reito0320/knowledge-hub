@@ -1,5 +1,5 @@
-import { verifyCognitoAccessToken } from '@/lib/amplify/cognito-verify-access-token';
-import { getCognitoUser } from '@/lib/amplify/get-cognito-user';
+import { verifyCognitoAccessToken } from '@/lib/AWS/cognito-verify-access-token';
+import { getCognitoUser } from '@/lib/AWS/get-cognito-user';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 

@@ -45,35 +45,36 @@ enum PostVisibility {
 // idにはCognito Access Tokenのsubを保存し、認証ユーザーを一意に結び付ける。
 model User {
   /// Cognitoが発行するユーザー固有のsub。
-  id           String      @id
+  id             String      @id
   /// ログインと社内連絡先に使うメールアドレス。
-  email        String      @unique
+  email          String      @unique
   /// 画面に表示するユーザー名。
-  name         String
-  /// ユーザーが設定したプロフィール画像のURL。
-  photoUrl     String?
+  name           String
+  /// S3に保存したプロフィール画像を識別するobjectKey。表示用URLはAPIで都度発行する。
+  /// 既存DBのphotoUrl列を維持しつつ、アプリ内では役割が分かる名前で扱う。
+  photoObjectKey String?     @map("photoUrl")
   /// 役職や担当職種。
-  jobTitle     String?
+  jobTitle       String?
   /// 得意分野や担当業務を記載する自己紹介文。
-  bio          String?
+  bio            String?
   /// アプリ内の操作権限。通常ユーザーはMEMBER。
-  role         UserRole    @default(MEMBER)
+  role           UserRole    @default(MEMBER)
   /// 所属部署を参照する外部キー。未設定も許可する。
-  departmentId String?
+  departmentId   String?
   /// departmentIdに対応する所属部署。
-  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  department     Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   /// このユーザーが投稿した記事。
-  posts        Post[]
+  posts          Post[]
   /// このユーザーが投稿したコメント。
-  comments     Comment[]
+  comments       Comment[]
   /// このユーザーが付けたいいね。
-  postLikes    PostLike[]
+  postLikes      PostLike[]
   /// このユーザーが保存したブックマーク。
-  bookmarks    Bookmark[]
+  bookmarks      Bookmark[]
   /// ユーザー情報をDBへ登録した日時。
-  createdAt    DateTime    @default(now())
+  createdAt      DateTime    @default(now())
   /// ユーザー情報を最後に更新した日時。
-  updatedAt    DateTime    @updatedAt
+  updatedAt      DateTime    @updatedAt
 
   @@index([departmentId])
 }

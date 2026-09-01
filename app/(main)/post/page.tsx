@@ -23,6 +23,7 @@ import { postStatusCounter } from './post';
 import { useRouter } from 'next/navigation';
 import Skeleton from '@/comp/Skeleton';
 import { toast } from 'react-toastify';
+import { AnimatedList, AnimatedListItem } from '@/comp/AnimatedList';
 
 const statusStyles = {
   DRAFT: {
@@ -165,7 +166,7 @@ const PostPage = () => {
         ) : errorMessage ? (
           <div>{errorMessage}</div>
         ) : (
-          <section className="mt-7 space-y-4" aria-label="投稿した記事">
+          <section className="mt-7" aria-label="投稿した記事">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-[#1E3A5F]">記事一覧</h2>
               <p className="text-xs text-[#8A97A8]">
@@ -173,17 +174,18 @@ const PostPage = () => {
               </p>
             </div>
 
-            {posts.map((post) => {
-              const status = statusStyles[post.status];
-              const visibility = visibilityStyles[post.visibility];
-              const VisibilityIcon = visibility.icon;
+            <AnimatedList className="mt-4 space-y-4">
+              {posts.map((post) => {
+                const status = statusStyles[post.status];
+                const visibility = visibilityStyles[post.visibility];
+                const VisibilityIcon = visibility.icon;
 
-              return (
-                <article
-                  key={post.id}
-                  onClick={() => router.push('/post/' + post.id)}
-                  className="cursor-pointer group rounded-2xl border border-[#E3DDD6] bg-white p-5 transition hover:border-[#C98A59]/45 hover:shadow-[0_12px_30px_rgba(72,48,30,0.07)] sm:p-6"
-                >
+                return (
+                  <AnimatedListItem key={post.id}>
+                    <article
+                      onClick={() => router.push('/post/' + post.id)}
+                      className="cursor-pointer group rounded-2xl border border-[#E3DDD6] bg-white p-5 transition hover:border-[#C98A59]/45 hover:shadow-[0_12px_30px_rgba(72,48,30,0.07)] sm:p-6"
+                    >
                   <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -273,9 +275,11 @@ const PostPage = () => {
                       </span>
                     )}
                   </div>
-                </article>
-              );
-            })}
+                    </article>
+                  </AnimatedListItem>
+                );
+              })}
+            </AnimatedList>
           </section>
         )}
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   FiArrowRight,
   FiBriefcase,
@@ -191,11 +192,18 @@ const SecondSection = ({
                     </div>
                     <div className="mt-5 flex flex-col gap-4 border-t border-[#EEF1F4] pt-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-center gap-3">
-                        {/* TODO: user.photoUrl取得後にnext/imageのプロフィール画像へ置き換える */}
-                        <div
-                          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#DCE9F7] text-xs font-bold text-[#254F8F]"
-                        >
-                          {article.author.name.trim().slice(0, 1) || 'U'}
+                        <div className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#DCE9F7] text-xs font-bold text-[#254F8F]">
+                          {article.author.photoUrl ? (
+                            <Image
+                              src={article.author.photoUrl}
+                              alt={`${article.author.name}のプロフィール画像`}
+                              fill
+                              sizes="40px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            article.author.name.trim().slice(0, 1) || 'U'
+                          )}
                         </div>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-x-2">
@@ -253,7 +261,13 @@ const SecondSection = ({
       </div>
 
       <aside className="space-y-5">
-        <section className="rounded-2xl border border-[#E0E6ED] bg-white p-5">
+        <motion.section
+          initial={{ opacity: 0, x: 16 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ type: 'tween', duration: 0.5, ease: 'easeInOut' }}
+          className="transform-gpu rounded-2xl border border-[#E0E6ED] bg-white p-5 will-change-[transform,opacity]"
+        >
           <div className="flex items-center gap-2 text-sm font-bold text-[#1E3A5F]">
             <FiTag aria-hidden="true" className="text-[#254F8F]" />
             注目のタグ
@@ -275,8 +289,14 @@ const SecondSection = ({
               </Link>
             ))}
           </div>
-        </section>
-        <section className="overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#1E3A5F_0%,#334B62_64%,#8A5938_135%)] p-5 text-white">
+        </motion.section>
+        <motion.section
+          initial={{ opacity: 0, x: 16 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ type: 'tween', duration: 0.5, ease: 'easeInOut' }}
+          className="transform-gpu overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#1E3A5F_0%,#334B62_64%,#8A5938_135%)] p-5 text-white will-change-[transform,opacity]"
+        >
           <div className="flex size-10 items-center justify-center rounded-xl bg-white/10">
             <FiUsers aria-hidden="true" />
           </div>
@@ -323,8 +343,18 @@ const SecondSection = ({
                         href={`/search?member=${encodeURIComponent(member.name)}&memberId=${encodeURIComponent(member.id)}`}
                         className="flex items-center gap-3 rounded-xl bg-white/8 p-2.5 transition hover:bg-white/14"
                       >
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#EEDCCB] text-xs font-bold text-[#7E4C2B]">
-                          {member.name.trim().slice(0, 1) || 'U'}
+                        <span className="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#EEDCCB] text-xs font-bold text-[#7E4C2B]">
+                          {member.photoUrl ? (
+                            <Image
+                              src={member.photoUrl}
+                              alt={`${member.name}のプロフィール画像`}
+                              fill
+                              sizes="36px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            member.name.trim().slice(0, 1) || 'U'
+                          )}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-xs font-bold text-white">
@@ -353,8 +383,14 @@ const SecondSection = ({
               </motion.div>
             )}
           </AnimatePresence>
-        </section>
-        <section className="rounded-2xl border border-[#E0E6ED] bg-white p-5">
+        </motion.section>
+        <motion.section
+          initial={{ opacity: 0, x: 16 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ type: 'tween', duration: 0.5, ease: 'easeInOut' }}
+          className="transform-gpu rounded-2xl border border-[#E0E6ED] bg-white p-5 will-change-[transform,opacity]"
+        >
           <h2 className="text-sm font-bold text-[#1E3A5F]">記事のカテゴリ</h2>
           <div className="mt-4 space-y-2">
             <Link
@@ -378,7 +414,7 @@ const SecondSection = ({
               <span className="text-xs">{categoryCounts.BUSINESS}</span>
             </Link>
           </div>
-        </section>
+        </motion.section>
       </aside>
     </main>
   );

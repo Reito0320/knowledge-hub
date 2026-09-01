@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from '@/lib/prisma';
+import { createOptionalProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
 
 export type HomePost = {
   id: string;
@@ -10,6 +11,7 @@ export type HomePost = {
   author: {
     name: string;
     email: string;
+    photoUrl: string | null;
     department: { name: string } | null;
   };
   postTags: Array<{ tag: { id: string; name: string } }>;
@@ -24,6 +26,7 @@ export type HomeMember = {
   name: string;
   email: string;
   jobTitle: string | null;
+  photoUrl: string | null;
   department: { name: string } | null;
   _count: { posts: number };
 };
@@ -38,6 +41,7 @@ const postSelect = {
     select: {
       name: true,
       email: true,
+      photoObjectKey: true,
       department: {
         select: { name: true },
       },
@@ -57,11 +61,6 @@ const postSelect = {
     },
   },
 } as const;
-
-const serializePost = (post: Omit<HomePost, 'publishedAt'> & { publishedAt: Date | null }): HomePost => ({
-  ...post,
-  publishedAt: post.publishedAt?.toISOString() ?? null,
-});
 
 export const getHomeData = async () => {
   const [
@@ -122,6 +121,7 @@ export const getHomeData = async () => {
         name: true,
         email: true,
         jobTitle: true,
+        photoObjectKey: true,
         department: { select: { name: true } },
         _count: {
           select: { posts: { where: { status: 'PUBLISHED' } } },
@@ -129,6 +129,41 @@ export const getHomeData = async () => {
       },
     }),
   ]);
+
+  const serializePost = async (post: (typeof popularPosts)[number]) => {
+    const photoUrl = await createOptionalProfileImageViewUrl(
+      post.author.photoObjectKey,
+    );
+
+    return {
+      ...post,
+      publishedAt: post.publishedAt?.toISOString() ?? null,
+      author: {
+        ...post.author,
+        photoObjectKey: undefined,
+        photoUrl,
+      },
+    };
+  };
+
+  const serializeMember = async (member: (typeof featuredMembers)[number]) => {
+    const photoUrl = await createOptionalProfileImageViewUrl(
+      member.photoObjectKey,
+    );
+
+    return {
+      ...member,
+      photoObjectKey: undefined,
+      photoUrl,
+    };
+  };
+
+  const [serializedPopularPosts, serializedLatestPosts, serializedMembers] =
+    await Promise.all([
+      Promise.all(popularPosts.map(serializePost)),
+      Promise.all(latestPosts.map(serializePost)),
+      Promise.all(featuredMembers.map(serializeMember)),
+    ]);
 
   return {
     stats: {
@@ -140,9 +175,9 @@ export const getHomeData = async () => {
       TECH: techPostCount,
       BUSINESS: businessPostCount,
     },
-    popularPosts: popularPosts.map(serializePost),
-    latestPosts: latestPosts.map(serializePost),
+    popularPosts: serializedPopularPosts,
+    latestPosts: serializedLatestPosts,
     trendingTags,
-    featuredMembers,
+    featuredMembers: serializedMembers,
   };
 };
