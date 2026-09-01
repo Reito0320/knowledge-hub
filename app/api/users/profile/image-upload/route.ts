@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma';
 import {
   createProfileImageUploadUrl,
   createProfileImageViewUrl,
+  deleteProfileImageObject,
   PROFILE_IMAGE_UPLOAD_URL_EXPIRES_IN,
 } from '@/lib/AWS/s3-presigned-url';
 
@@ -106,16 +107,39 @@ export const PATCH = async (req: NextRequest) => {
         { status: 400 },
       );
 
-    await prisma.user.update({
+    const prevUserData = await prisma.user.findUnique({
       where: {
         id: userId,
       },
-      data: {
-        photoObjectKey: objectKey,
+      select: {
+        photoObjectKey: true,
       },
     });
 
+    const prevObjectKey = prevUserData?.photoObjectKey;
+
+    // DBを更新する前に表示URLを作れることを確認する。
     const photoUrl = await createProfileImageViewUrl(objectKey);
+
+    if (prevObjectKey !== objectKey) {
+      await prisma.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          photoObjectKey: objectKey,
+        },
+      });
+    }
+
+    if (prevObjectKey && prevObjectKey !== objectKey) {
+      const deleted = await deleteProfileImageObject(prevObjectKey);
+
+      if (!deleted) {
+        // DBは新しい画像を参照済みなので、画像更新自体は成功として扱う。
+        console.error('以前のプロフィール画像を削除できませんでした。');
+      }
+    }
 
     return NextResponse.json({
       message: 'プロフィール画像の保存先を更新しました。',
