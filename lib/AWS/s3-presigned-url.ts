@@ -1,4 +1,8 @@
-import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getS3BucketName, getS3Client } from './s3-client';
 import 'server-only';
@@ -51,5 +55,23 @@ export const createOptionalProfileImageViewUrl = async (
   } catch (error) {
     console.error('プロフィール画像の表示URLを発行できませんでした。', error);
     return null;
+  }
+};
+
+/**
+ * userのobjectKeyを使って対象のs3の画像を削除する。flagを返す関数
+ * @param objectKey
+ */
+export const deleteProfileImageObject = async (objectKey: string) => {
+  try {
+    const command = new DeleteObjectCommand({
+      Bucket: getS3BucketName(),
+      Key: objectKey,
+    });
+    await getS3Client().send(command);
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
   }
 };
