@@ -204,7 +204,7 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
             >
               <Link
                 href="/post/new"
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#D9C6B5] bg-white px-5 text-sm font-bold text-[#87512F] shadow-sm transition hover:border-[#B97845] hover:bg-[#FFF7EF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B97845]"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#A66334] px-5 text-sm font-bold text-white shadow-sm transition hover:bg-[#86502D] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A66334]"
               >
                 <FiEdit3 aria-hidden="true" />
                 記事を書く

@@ -2,6 +2,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { canUserViewPost } from '@/lib/post/can-user-view-post';
+import { createProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
 
 type RouteContext = {
   params: Promise<{ postId: string }>;
@@ -41,14 +42,30 @@ export const POST = async (request: NextRequest, { params }: RouteContext) => {
         id: true,
         content: true,
         createdAt: true,
-        author: { select: { id: true, name: true, photoUrl: true } },
+        author: { select: { id: true, name: true, photoObjectKey: true } },
       },
     });
+
+    let photoUrl: string | null = null;
+
+    if (comment.author.photoObjectKey) {
+      photoUrl = await createProfileImageViewUrl(
+        comment.author.photoObjectKey,
+      );
+    }
 
     return NextResponse.json(
       {
         message: 'コメントを投稿しました。',
-        comment: { ...comment, createdAt: comment.createdAt.toISOString() },
+        comment: {
+          ...comment,
+          createdAt: comment.createdAt.toISOString(),
+          author: {
+            id: comment.author.id,
+            name: comment.author.name,
+            photoUrl,
+          },
+        },
       },
       { status: 201 },
     );

@@ -17,8 +17,12 @@ const mocks = vi.hoisted(() => ({
   deleteCookie: vi.fn(),
 }));
 
-vi.mock('@/lib/amplify/cognito-verify-access-token', () => ({
+vi.mock('@/lib/AWS/cognito-verify-access-token', () => ({
   verifyCognitoAccessToken: mocks.verifyToken,
+}));
+
+vi.mock('@/lib/AWS/s3-presigned-url', () => ({
+  createProfileImageViewUrl: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
