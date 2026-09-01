@@ -1,13 +1,92 @@
 'use client';
 
-import { FcGoogle } from 'react-icons/fc';
-import { handleLogin } from './login';
+import { fetchPostCreateSession } from '@/app/api/auth/session/fetch';
+import { fetchPostCreateUser } from '@/app/api/users/provision/fetch';
 import { notifyAuthSessionChanged } from '@/lib/auth/auth-session-event';
-import { useRouter } from 'next/navigation';
+import { fetchAuthSession, signIn } from 'aws-amplify/auth';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { FcGoogle } from 'react-icons/fc';
+import MfaSetupView from './_components/MfaSetupView';
+
+type LoginStep = 'LOGIN' | 'MFA_SETUP';
+type LoginResult = 'SIGNED_IN' | 'MFA_SETUP';
 
 const LoginPage = () => {
   const router = useRouter();
+  const [loginStep, setLoginStep] = useState<LoginStep>('LOGIN');
+  const [setupUri, setSetupUri] = useState('');
+
+  /**
+   * Cognitoへログインし、取得したAccess Tokenからアプリ独自のSessionを作成する。
+   */
+  const handleLogin = async (
+    event: React.SubmitEvent<HTMLFormElement>,
+  ): Promise<LoginResult> => {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const username = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    const authSession = await fetchAuthSession();
+    const accessToken = authSession.tokens?.accessToken?.toString();
+
+    /* cognito側でtokenがない場合 = 初回 or サインアウトしたuser */
+    if (!accessToken) {
+      const { nextStep } = await signIn({ username, password });
+
+      /* MFA認証の設定が必要な場合 */
+      if (nextStep.signInStep === 'CONTINUE_SIGN_IN_WITH_TOTP_SETUP') {
+        const uri = nextStep.totpSetupDetails
+          .getSetupUri('knowledge-hub')
+          .toString();
+
+        setSetupUri(uri);
+        setLoginStep('MFA_SETUP');
+        return 'MFA_SETUP';
+      }
+    }
+
+    if (!accessToken) {
+      throw new Error('access tokenを取得できません');
+    }
+
+    const departmentId = sessionStorage.getItem('signupDepartmentId');
+    await fetchPostCreateUser(accessToken, departmentId);
+    sessionStorage.removeItem('signupDepartmentId');
+
+    await fetchPostCreateSession(`Bearer ${accessToken}`);
+
+    return 'SIGNED_IN';
+  };
+
+  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
+    try {
+      const loginResult = await handleLogin(event);
+
+      if (loginResult === 'MFA_SETUP') return;
+
+      notifyAuthSessionChanged();
+      router.replace('/');
+      router.refresh();
+    } catch (error) {
+      console.error('ログインに失敗しました:', error);
+    }
+  };
+
+  if (loginStep === 'MFA_SETUP') {
+    return (
+      <MfaSetupView
+        setupUri={setupUri}
+        onBack={() => {
+          setSetupUri('');
+          setLoginStep('LOGIN');
+        }}
+      />
+    );
+  }
 
   return (
     <main className="grid min-h-screen grid-cols-1 bg-[#F7F6F3] font-inter text-[#454A52] md:grid-cols-2">
@@ -88,26 +167,14 @@ const LoginPage = () => {
           {/* mobile-only brand */}
           <div className="mb-6 flex items-center gap-2.5 font-sora text-lg font-extrabold md:hidden"></div>
 
-          <h2 className="font-sora text-2xl font-bold text-[#454A52]">ログイン</h2>
+          <h2 className="font-sora text-2xl font-bold text-[#454A52]">
+            ログイン
+          </h2>
           <p className="mb-7 mt-1.5 text-sm text-[#7B8899]">
             作成した社内専用アカウントにログインします
           </p>
 
-          <form
-            onSubmit={async (e) => {
-              try {
-                const isLoggedIn = await handleLogin(e);
-
-                if (!isLoggedIn) return;
-              } catch (error) {
-                console.error(error);
-                return;
-              }
-              notifyAuthSessionChanged();
-              router.replace('/');
-              router.refresh();
-            }}
-          >
+          <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label
                 htmlFor="email"

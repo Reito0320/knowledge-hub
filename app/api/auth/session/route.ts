@@ -134,7 +134,6 @@ export const POST = async (req: NextRequest) => {
         { status: 403 },
       );
 
-    /* 自前のsession作成関数を使う。ここでpayload.uidを使わないのは、db経由で発行されたものと明確にするため */
     await createSession(user.id);
 
     return NextResponse.json(

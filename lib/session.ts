@@ -1,6 +1,11 @@
 import { setCookie } from './cookie';
 import { encrypt } from './jwt';
 
+/**
+ * 自前のtoken発行関数
+ * @param userId
+ * @returns
+ */
 export const createSession = async (userId: string) => {
   try {
     /* sessionの期限設定 */
