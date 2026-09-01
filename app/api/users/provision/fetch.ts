@@ -1,3 +1,5 @@
+import { readJsonResponse } from '@/lib/http/read-json-response';
+
 export const fetchPostCreateUser = async (
   accessToken: string,
   departmentId?: string | null,
@@ -10,9 +12,9 @@ export const fetchPostCreateUser = async (
     },
     body: JSON.stringify({ departmentId: departmentId || null }),
   });
-  if (!res.ok)
-    throw new Error('userの情報をdbに保存する通信が失敗しています。');
+  const { message } = await readJsonResponse<{ message: string }>(res);
 
-  const { message } = await res.json();
+  if (!res.ok) throw new Error(message);
+
   return message;
 };

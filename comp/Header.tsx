@@ -16,6 +16,7 @@ import {
   FiUpload,
   FiX,
   FiActivity,
+  FiUserPlus,
   FiUsers,
 } from 'react-icons/fi';
 import {
@@ -354,13 +355,22 @@ const Header = () => {
                 </button>
               </>
             ) : (
-              <Link
-                href="/login"
-                className="flex h-10 items-center gap-2 rounded-lg bg-[#254F8F] px-4 text-sm font-bold text-white transition hover:bg-[#1E3A5F]"
-              >
-                <FiLogIn aria-hidden="true" className="size-4" />
-                <span className="hidden sm:inline">ログイン</span>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/signup"
+                  className="flex h-10 items-center gap-2 rounded-lg border border-[#D7B99F] bg-white px-3 text-sm font-bold text-[#9A5B31] transition hover:border-[#C88A5B] hover:bg-[#FFF8F1]"
+                >
+                  <FiUserPlus aria-hidden="true" className="size-4" />
+                  <span className="hidden sm:inline">新規登録</span>
+                </Link>
+                <Link
+                  href="/login"
+                  className="flex h-10 items-center gap-2 rounded-lg bg-[#A66334] px-3 text-sm font-bold text-white transition hover:bg-[#86502D] sm:px-4"
+                >
+                  <FiLogIn aria-hidden="true" className="size-4" />
+                  <span className="hidden sm:inline">ログイン</span>
+                </Link>
+              </div>
             )}
           </div>
         </div>

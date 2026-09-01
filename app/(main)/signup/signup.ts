@@ -19,7 +19,13 @@ export const handleSignup = async (
     });
 
     sessionStorage.setItem('signupEmail', email);
-    sessionStorage.setItem('signupDepartmentId', departmentId);
+
+    if (departmentId) {
+      sessionStorage.setItem('signupDepartmentId', departmentId);
+    } else {
+      sessionStorage.removeItem('signupDepartmentId');
+    }
+
     return true;
   } catch (error) {
     console.error(error);
