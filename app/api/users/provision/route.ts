@@ -56,6 +56,7 @@ export const POST = async (req: NextRequest) => {
         { status: 403 },
       );
     }
+    const adminEmail = process.env.ADMIN_ACCOUNT_EMAIL;
 
     /* userがすでにDBにデータを保持しているなら、updateそうじゃなければcreate */
     const user = await prisma.user.upsert({
@@ -68,6 +69,7 @@ export const POST = async (req: NextRequest) => {
         email: cognitoUser.email,
         name: cognitoUser.name,
         departmentId,
+        role: cognitoUser.email === adminEmail ? 'ADMIN' : 'MEMBER',
       },
       select: {
         id: true,

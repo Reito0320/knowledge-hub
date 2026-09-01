@@ -43,6 +43,7 @@ export const GET = async () => {
         photoObjectKey: true,
         jobTitle: true,
         bio: true,
+        role: true,
         department: { select: { id: true, name: true } },
       },
     });

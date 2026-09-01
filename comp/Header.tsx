@@ -16,6 +16,7 @@ import {
   FiUpload,
   FiX,
   FiActivity,
+  FiShield,
   FiUserPlus,
   FiUsers,
 } from 'react-icons/fi';
@@ -234,10 +235,23 @@ const Header = () => {
       isActive: pathname === '/post/new' || pathname.endsWith('/edit'),
       requiresLogin: true,
     },
+    {
+      href: '/admin',
+      label: '管理者画面',
+      icon: FiShield,
+      isActive: pathname.startsWith('/admin'),
+      requiresLogin: true,
+      requiresAdmin: true,
+    },
   ];
 
   const visibleNavigationItems = navigationItems.filter(
-    (item) => !item.requiresLogin || Boolean(user),
+    (item) => {
+      if (item.requiresLogin && !user) return false;
+      if (item.requiresAdmin && user?.role !== 'ADMIN') return false;
+
+      return true;
+    },
   );
 
   const navigation = (
