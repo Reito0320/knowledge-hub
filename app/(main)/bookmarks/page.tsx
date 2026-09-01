@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import { FiBookmark, FiClock, FiTag } from 'react-icons/fi';
+import { AnimatedList, AnimatedListItem } from '@/comp/AnimatedList';
 
 const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
   year: 'numeric',
@@ -57,11 +58,10 @@ const BookmarksPage = async () => {
               お気に入りに追加した記事はまだありません。
             </div>
           ) : (
-            bookmarks.map(({ post, createdAt }) => (
-              <article
-                key={post.id}
-                className="rounded-2xl border border-[#E3DDD6] bg-white p-5 transition hover:border-[#C98A59]/45 hover:shadow-sm sm:p-6"
-              >
+            <AnimatedList className="space-y-4">
+              {bookmarks.map(({ post, createdAt }) => (
+                <AnimatedListItem key={post.id}>
+                  <article className="rounded-2xl border border-[#E3DDD6] bg-white p-5 transition hover:border-[#C98A59]/45 hover:shadow-sm sm:p-6">
                 <div className="flex items-center gap-2 text-xs text-[#8A8178]">
                   <span className="font-bold text-[#B26936]">
                     {post.category === 'TECH' ? '技術ブログ' : '業務・カルチャー'}
@@ -91,8 +91,10 @@ const BookmarksPage = async () => {
                     </span>
                   ))}
                 </div>
-              </article>
-            ))
+                  </article>
+                </AnimatedListItem>
+              ))}
+            </AnimatedList>
           )}
         </section>
       </div>

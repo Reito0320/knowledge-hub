@@ -2,6 +2,7 @@
 
 import { FcGoogle } from 'react-icons/fc';
 import { handleLogin } from './login';
+import { notifyAuthSessionChanged } from '@/lib/auth/auth-session-event';
 import { useRouter } from 'next/navigation';
 
 const LoginPage = () => {
@@ -101,6 +102,7 @@ const LoginPage = () => {
                 console.error(error);
                 return;
               }
+              notifyAuthSessionChanged();
               router.replace('/');
               router.refresh();
             }}

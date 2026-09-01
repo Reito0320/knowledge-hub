@@ -14,7 +14,10 @@ import {
   FiTag,
 } from 'react-icons/fi';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
+import { createOptionalProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
+import { AnimatedList, AnimatedListItem } from '@/comp/AnimatedList';
 import MemberSearchControls from './_components/MemberSearchControls';
+import Image from 'next/image';
 
 type SearchParamValue = string | string[] | undefined;
 
@@ -70,7 +73,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
 
   // Headerからメンバー名が送られた場合だけ、Userとその公開記事を取得する。
   // 下書きやアーカイブは投稿者以外へ公開しない。
-  const members = isMemberDirectory
+  const memberRecords = isMemberDirectory
     ? await prisma.user.findMany({
         where: {
           // 検索結果にもログイン中の本人を含めない。
@@ -99,6 +102,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
           email: true,
           jobTitle: true,
           bio: true,
+          photoObjectKey: true,
           department: {
             select: {
               name: true,
@@ -152,6 +156,20 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
       })
     : [];
 
+  const members = await Promise.all(
+    memberRecords.map(async (targetMember) => {
+      const photoUrl = await createOptionalProfileImageViewUrl(
+        targetMember.photoObjectKey,
+      );
+
+      return {
+        ...targetMember,
+        photoObjectKey: undefined,
+        photoUrl,
+      };
+    }),
+  );
+
   const postCount = members.reduce(
     (total, targetMember) => total + targetMember.posts.length,
     0,
@@ -189,23 +207,32 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
             </p>
           </section>
         ) : (
-          <div className="mt-7 space-y-8">
+          <div className="mt-7">
             <p className="text-sm font-semibold text-[#66758A]">
               {members.length}名・公開記事{postCount}件
             </p>
 
-            {members.map((targetMember) => {
+            <AnimatedList className="mt-8 space-y-8">
+              {members.map((targetMember) => {
               const initials = targetMember.name.trim().slice(0, 1) || 'U';
 
               return (
-                <section
-                  key={targetMember.id}
-                  className="overflow-hidden rounded-2xl border border-[#E3DDD6] bg-white shadow-[0_12px_30px_rgba(72,48,30,0.05)]"
-                >
+                <AnimatedListItem key={targetMember.id}>
+                  <section className="overflow-hidden rounded-2xl border border-[#E3DDD6] bg-white shadow-[0_12px_30px_rgba(72,48,30,0.05)]">
                   <header className="border-b border-[#EEE8E1] bg-[#FCFAF7] p-5 sm:p-6">
                     <div className="flex items-start gap-4">
-                      <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#E8F0FA] text-base font-bold text-[#254F8F]">
-                        {initials}
+                      <span className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#E8F0FA] text-base font-bold text-[#254F8F]">
+                        {targetMember.photoUrl ? (
+                          <Image
+                            src={targetMember.photoUrl}
+                            alt={`${targetMember.name}のプロフィール画像`}
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          initials
+                        )}
                       </span>
                       <div className="min-w-0">
                         <h2 className="text-lg font-bold text-[#1E3A5F]">
@@ -304,9 +331,11 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
                       ))}
                     </div>
                   )}
-                </section>
+                  </section>
+                </AnimatedListItem>
               );
-            })}
+              })}
+            </AnimatedList>
           </div>
         )}
 

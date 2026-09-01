@@ -1,4 +1,5 @@
 import { verifyCognitoAccessToken } from '@/lib/AWS/cognito-verify-access-token';
+import { createProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
 import { deleteCookie, getCookie } from '@/lib/cookie';
 import { decrypt } from '@/lib/jwt';
 import { prisma } from '@/lib/prisma';
@@ -39,7 +40,7 @@ export const GET = async () => {
         id: true,
         name: true,
         email: true,
-        photoUrl: true,
+        photoObjectKey: true,
         jobTitle: true,
         bio: true,
         department: { select: { id: true, name: true } },
@@ -54,9 +55,24 @@ export const GET = async () => {
         { status: 401 },
       );
 
+    let photoUrl: string | null = null;
+
+    if (user.photoObjectKey) {
+      try {
+        photoUrl = await createProfileImageViewUrl(user.photoObjectKey);
+      } catch (error) {
+        // S3の一時障害でログイン状態まで失わせず、画像なしでユーザー情報を返す。
+        console.error('プロフィール画像URLを発行できませんでした:', error);
+      }
+    }
+
     return NextResponse.json({
       message: 'sessionを確認しました。',
-      user,
+      user: {
+        ...user,
+        photoObjectKey: undefined,
+        photoUrl,
+      },
     });
   } catch (error) {
     console.error(error);

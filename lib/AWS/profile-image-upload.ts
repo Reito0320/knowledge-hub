@@ -32,3 +32,12 @@ export const getProfileImageExtension = (
   if (contentType === 'image/png') return 'png';
   return 'webp';
 };
+
+export const checkFileSize = (fileSize: unknown): boolean => {
+  return (
+    typeof fileSize === 'number' &&
+    Number.isInteger(fileSize) &&
+    fileSize > 0 &&
+    fileSize <= MAX_PROFILE_IMAGE_SIZE
+  );
+};
