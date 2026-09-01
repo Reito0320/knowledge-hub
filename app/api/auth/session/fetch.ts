@@ -27,7 +27,7 @@ export const fetchGetSession = async () => {
 };
 
 /**
- * 取得したcognitoTokenをBearに連結させて通信を行い、server側でcognitoTokenの検証をする関数
+ * 取得したcognitoTokenをBearに連結させて通信を行い、自前sessionの発行
  * @param header
  * @returns
  */

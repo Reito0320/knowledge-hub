@@ -1,33 +1,82 @@
 'use client';
 
+import { confirmSignIn } from 'aws-amplify/auth';
 import { useState } from 'react';
 import {
   FiArrowLeft,
   FiCheck,
-  FiGrid,
+  FiCopy,
+  FiExternalLink,
+  FiEye,
+  FiEyeOff,
   FiKey,
   FiShield,
   FiSmartphone,
 } from 'react-icons/fi';
 
+import QRCode from 'react-qr-code';
+
 type MfaSetupViewProps = {
   setupUri: string;
+  sharedSecret: string;
+  completeAppLogin: () => Promise<void>;
   onBack: () => void;
 };
 
-const MfaSetupView = ({ setupUri, onBack }: MfaSetupViewProps) => {
+type CopyStatus = 'IDLE' | 'COPIED' | 'ERROR';
+
+const GOOGLE_AUTHENTICATOR_IOS_URL =
+  'https://apps.apple.com/jp/app/google-authenticator/id388497605';
+const GOOGLE_AUTHENTICATOR_ANDROID_URL =
+  'https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2';
+
+const MfaSetupView = ({
+  setupUri,
+  sharedSecret,
+  completeAppLogin,
+  onBack,
+}: MfaSetupViewProps) => {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>('IDLE');
+  const [isSecretVisible, setIsSecretVisible] = useState(false);
 
-  // TODO: Cognitoから受け取ったtotpSetupDetailsを状態として保持する。
-  // const [setupUri, setSetupUri] = useState('');
-  // const [sharedSecret, setSharedSecret] = useState('');
+  let copyButtonLabel = 'セットアップキーをコピー';
+  let CopyButtonIcon = FiCopy;
+
+  if (copyStatus === 'COPIED') {
+    copyButtonLabel = 'コピーしました';
+    CopyButtonIcon = FiCheck;
+  }
+
+  if (copyStatus === 'ERROR') {
+    copyButtonLabel = 'コピーできませんでした';
+  }
 
   const handleCodeChange = (value: string) => {
     const numericCode = value.replace(/\D/g, '').slice(0, 6);
     setCode(numericCode);
     setError('');
+  };
+
+  const handleCopySharedSecret = async () => {
+    if (!sharedSecret || !isSecretVisible) {
+      setCopyStatus('ERROR');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(sharedSecret);
+      setCopyStatus('COPIED');
+    } catch {
+      setCopyStatus('ERROR');
+    }
+  };
+
+  const handleToggleSecret = () => {
+    setCopyStatus('IDLE');
+    setIsSecretVisible((currentValue) => !currentValue);
   };
 
   const handleCompleteSetup = async (
@@ -49,7 +98,11 @@ const MfaSetupView = ({ setupUri, onBack }: MfaSetupViewProps) => {
       // 2. nextStep.totpSetupDetails.getSetupUri('Knowledge-Hub')からQRコードを作る。
       // 3. このフォームで入力されたcodeをconfirmSignIn({ challengeResponse: code })へ渡す。
       // 4. 認証完了後にAccess Tokenを取得し、既存のUser作成・Session作成処理を呼ぶ。
-      console.log('Cognitoへ送信する初回MFAコード:', code);
+      const res = await confirmSignIn({ challengeResponse: code });
+
+      if (!res.isSignedIn) throw new Error('MFA認証が失敗しています。');
+
+      await completeAppLogin();
     } catch (setupError) {
       console.error(setupError);
       setError('MFAを登録できませんでした。コードを確認してください。');
@@ -99,8 +152,22 @@ const MfaSetupView = ({ setupUri, onBack }: MfaSetupViewProps) => {
           viewBox="0 0 200 200"
           aria-hidden="true"
         >
-          <circle cx="100" cy="100" r="90" fill="none" stroke="#fff" strokeOpacity="0.15" />
-          <circle cx="100" cy="100" r="70" fill="none" stroke="#fff" strokeOpacity="0.15" />
+          <circle
+            cx="100"
+            cy="100"
+            r="90"
+            fill="none"
+            stroke="#fff"
+            strokeOpacity="0.15"
+          />
+          <circle
+            cx="100"
+            cy="100"
+            r="70"
+            fill="none"
+            stroke="#fff"
+            strokeOpacity="0.15"
+          />
           <circle
             cx="100"
             cy="100"
@@ -121,20 +188,53 @@ const MfaSetupView = ({ setupUri, onBack }: MfaSetupViewProps) => {
 
       <section className="flex items-center justify-center px-5 py-10 sm:px-10 lg:py-14">
         <div className="w-full max-w-2xl">
-          <div className="mb-7">
-            <p className="mb-2 text-xs font-bold tracking-[0.14em] text-[#A66334] uppercase">
-              MFA setup
-            </p>
-            <h2 className="font-sora text-2xl font-bold text-[#454A52]">
-              認証アプリの初回登録
-            </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-[#7B8899]">
-              QRコードを読み取ったあと、認証アプリに表示されたコードで登録を完了します。
-            </p>
+          <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="mb-2 text-xs font-bold tracking-[0.14em] text-[#A66334] uppercase">
+                MFA setup
+              </p>
+              <h2 className="font-sora text-2xl font-bold text-[#454A52]">
+                認証アプリの初回登録
+              </h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-[#7B8899]">
+                QRコードを読み取ったあと、認証アプリに表示されたコードで登録を完了します。
+              </p>
+            </div>
+
+            <div className="shrink-0 rounded-xl border border-[#E2D8CE] bg-[#FCF7F2] p-3">
+              <p className="text-[11px] font-bold text-[#57534F]">
+                Google Authenticatorをお持ちでない方
+              </p>
+              <p className="mt-1 text-[10px] text-[#8A8178]">
+                Google公式の認証コード生成アプリです
+              </p>
+              <div className="mt-2 flex gap-2">
+                <a
+                  href={GOOGLE_AUTHENTICATOR_IOS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1 rounded-lg border border-[#D8CEC4] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#665D55] transition hover:border-[#A66334]/40 hover:bg-[#FFF9F3] hover:text-[#A66334]"
+                  aria-label="App StoreでGoogle Authenticatorを開く"
+                >
+                  iOS
+                  <FiExternalLink aria-hidden="true" />
+                </a>
+                <a
+                  href={GOOGLE_AUTHENTICATOR_ANDROID_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1 rounded-lg border border-[#D8CEC4] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#665D55] transition hover:border-[#A66334]/40 hover:bg-[#FFF9F3] hover:text-[#A66334]"
+                  aria-label="Google PlayでGoogle Authenticatorを開く"
+                >
+                  Android
+                  <FiExternalLink aria-hidden="true" />
+                </a>
+              </div>
+            </div>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <section className="rounded-2xl border border-[#DED4CA] bg-white p-5 shadow-[0_12px_35px_rgba(88,68,50,0.06)]">
+          <div className="grid items-stretch gap-5 md:grid-cols-2">
+            <section className="h-full rounded-2xl border border-[#DED4CA] bg-white p-5 shadow-[0_12px_35px_rgba(88,68,50,0.06)]">
               <div className="mb-4 flex items-center gap-3">
                 <span className="flex size-9 items-center justify-center rounded-xl bg-[#1E3A5F]/8 text-[#1E3A5F]">
                   <FiSmartphone aria-hidden="true" />
@@ -147,17 +247,23 @@ const MfaSetupView = ({ setupUri, onBack }: MfaSetupViewProps) => {
                 </div>
               </div>
 
-              <div className="mx-auto flex aspect-square w-full max-w-48 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#D8CEC4] bg-[#FCFAF7] text-center">
-                <FiGrid className="size-10 text-[#A99A8F]" aria-hidden="true" />
-                <p className="mt-3 text-xs font-semibold text-[#756C64]">
-                  QRコード表示エリア
-                </p>
-                <p className="mt-1 px-5 text-[11px] leading-relaxed text-[#9A9087]">
-                  {setupUri
-                    ? 'QRコードライブラリ接続後に表示されます'
-                    : 'セットアップ情報を準備しています'}
-                </p>
-              </div>
+              {setupUri ? (
+                <div className="mx-auto w-full max-w-48 rounded-2xl bg-white p-4">
+                  <QRCode
+                    value={setupUri}
+                    size={192}
+                    level="M"
+                    className="h-auto w-full"
+                    title="Knowledge-Hub MFA設定用QRコード"
+                  />
+                </div>
+              ) : (
+                <div className="mx-auto flex aspect-square w-full max-w-48 items-center justify-center rounded-2xl border-2 border-dashed border-[#D8CEC4]">
+                  <p className="text-xs text-[#756C64]">
+                    QRコードを準備しています
+                  </p>
+                </div>
+              )}
 
               <div className="mt-5 rounded-xl bg-[#FCF7F2] p-3.5">
                 <div className="flex items-center gap-2 text-xs font-bold text-[#57534F]">
@@ -167,11 +273,46 @@ const MfaSetupView = ({ setupUri, onBack }: MfaSetupViewProps) => {
                 <p className="mt-1.5 text-[11px] leading-relaxed text-[#7B7169]">
                   Cognitoから取得したセットアップキーを、認証アプリへ手動で入力できるようにします。
                 </p>
-                {/* TODO: sharedSecret取得後、コピー可能なキーとコピーボタンをここへ表示する。 */}
+
+                <button
+                  type="button"
+                  onClick={handleToggleSecret}
+                  disabled={!sharedSecret}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#D8CEC4] bg-white px-3 py-2.5 text-xs font-bold text-[#665D55] transition hover:border-[#A66334]/40 hover:bg-[#FFF9F3] hover:text-[#A66334] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSecretVisible ? (
+                    <FiEyeOff className="size-4" aria-hidden="true" />
+                  ) : (
+                    <FiEye className="size-4" aria-hidden="true" />
+                  )}
+                  {isSecretVisible
+                    ? 'セットアップキーを隠す'
+                    : 'セットアップキーを表示'}
+                </button>
+
+                {isSecretVisible && (
+                  <div className="mt-3 rounded-lg border border-[#E0D4C9] bg-white p-3">
+                    <code className="block break-all text-center text-xs leading-relaxed font-semibold tracking-[0.08em] text-[#4F4943]">
+                      {sharedSecret}
+                    </code>
+                    <p className="mt-2 text-[10px] leading-relaxed text-[#9A5F38]">
+                      このキーを他人へ共有したり、スクリーンショットで保存したりしないでください。
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleCopySharedSecret}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[#A66334] px-3 py-2.5 text-xs font-bold text-white transition hover:bg-[#86502D]"
+                      aria-live="polite"
+                    >
+                      <CopyButtonIcon className="size-4" aria-hidden="true" />
+                      {copyButtonLabel}
+                    </button>
+                  </div>
+                )}
               </div>
             </section>
 
-            <section className="rounded-2xl border border-[#DED4CA] bg-white p-5 shadow-[0_12px_35px_rgba(88,68,50,0.06)]">
+            <section className="h-full rounded-2xl border border-[#DED4CA] bg-white p-5 shadow-[0_12px_35px_rgba(88,68,50,0.06)]">
               <div className="mb-4 flex items-center gap-3">
                 <span className="flex size-9 items-center justify-center rounded-xl bg-[#A66334]/10 text-[#A66334]">
                   <FiCheck aria-hidden="true" />
@@ -229,7 +370,10 @@ const MfaSetupView = ({ setupUri, onBack }: MfaSetupViewProps) => {
               </form>
 
               <div className="mt-5 flex gap-2 rounded-[10px] bg-[#F3F5F7] p-3.5 text-xs leading-relaxed text-[#66717D]">
-                <FiShield className="mt-0.5 size-4 shrink-0 text-[#1E3A5F]" aria-hidden="true" />
+                <FiShield
+                  className="mt-0.5 size-4 shrink-0 text-[#1E3A5F]"
+                  aria-hidden="true"
+                />
                 登録後は認証アプリを削除しないでください。端末を変更する場合は、先に情シスへご相談ください。
               </div>
             </section>

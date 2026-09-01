@@ -1,10 +1,15 @@
 'use client';
 
+import { confirmSignIn } from 'aws-amplify/auth';
 import Link from 'next/link';
 import { useState } from 'react';
 import { FiArrowLeft, FiLock, FiShield } from 'react-icons/fi';
 
-const MfaCodeView = () => {
+const MfaCodeView = ({
+  completeAppLogin,
+}: {
+  completeAppLogin: () => Promise<void>;
+}) => {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
@@ -21,21 +26,16 @@ const MfaCodeView = () => {
   ) => {
     event.preventDefault();
 
-    if (code.length !== 6) {
-      setError('認証アプリに表示された6桁のコードを入力してください。');
-      return;
-    }
+    if (code.length !== 6)
+      return setError('認証アプリに表示された6桁のコードを入力してください。');
 
     setError('');
     setIsConfirming(true);
 
     try {
-      // TODO: Cognito MFAを実装するときに、以下の処理を追加する。
-      // 1. aws-amplify/authからconfirmSignInをimportする。
-      // 2. confirmSignIn({ challengeResponse: code })を実行する。
-      // 3. result.isSignedInがtrueならCognitoのAccess Tokenを取得する。
-      // 4. 既存のUser作成・自前Session作成処理を呼び、Homeへ遷移する。
-      console.log('Cognitoへ送信するMFAコード:', code);
+      const res = await confirmSignIn({ challengeResponse: code });
+      if (!res.isSignedIn) throw new Error('過去にsigninした形跡がありません');
+      await completeAppLogin();
     } catch (confirmError) {
       console.error(confirmError);
       setError('コードを確認できませんでした。もう一度お試しください。');
@@ -199,7 +199,10 @@ const MfaCodeView = () => {
           </Link>
 
           <div className="mt-7 flex gap-2 rounded-[10px] bg-[#FCF7F2] p-3.5 text-xs leading-relaxed text-[#756C64]">
-            <FiShield className="mt-0.5 size-4 shrink-0 text-[#A66334]" aria-hidden="true" />
+            <FiShield
+              className="mt-0.5 size-4 shrink-0 text-[#A66334]"
+              aria-hidden="true"
+            />
             認証アプリを利用できない場合は、情シス担当者へお問い合わせください。
           </div>
         </div>

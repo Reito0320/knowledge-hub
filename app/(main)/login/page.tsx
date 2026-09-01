@@ -9,14 +9,40 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import MfaSetupView from './_components/MfaSetupView';
+import MfaCodeView from './_components/MfaCodeView';
 
-type LoginStep = 'LOGIN' | 'MFA_SETUP';
-type LoginResult = 'SIGNED_IN' | 'MFA_SETUP';
+type LoginStep = 'LOGIN' | 'MFA_SETUP' | 'MFA_CODE';
+type LoginResult = 'SIGNED_IN' | 'MFA_SETUP' | 'MFA_CODE';
 
 const LoginPage = () => {
   const router = useRouter();
   const [loginStep, setLoginStep] = useState<LoginStep>('LOGIN');
   const [setupUri, setSetupUri] = useState('');
+  const [sharedSecret, setSharedSecret] = useState('');
+
+  /**
+   * cognitoのtokenを検証し、sessionとuserの情報をDBに保存させる処理
+   */
+  const completeAppLogin = async () => {
+    const authSession = await fetchAuthSession();
+    const accessToken = await authSession.tokens?.accessToken.toString();
+
+    if (!accessToken) throw new Error('cognitoのtokenが取得できませんでした。');
+
+    const departmentId = sessionStorage.getItem('signupDepartmentId');
+
+    /* cognito userをDBへ保存・確認 */
+    await fetchPostCreateUser(accessToken, departmentId);
+
+    sessionStorage.removeItem('signupDepartmentId');
+
+    await fetchPostCreateSession('Bearer ' + accessToken);
+
+    notifyAuthSessionChanged();
+
+    router.replace('/');
+    router.refresh();
+  };
 
   /**
    * Cognitoへログインし、取得したAccess Tokenからアプリ独自のSessionを作成する。
@@ -33,33 +59,30 @@ const LoginPage = () => {
     const authSession = await fetchAuthSession();
     const accessToken = authSession.tokens?.accessToken?.toString();
 
-    /* cognito側でtokenがない場合 = 初回 or サインアウトしたuser */
-    if (!accessToken) {
-      const { nextStep } = await signIn({ username, password });
+    /* すでにsignin状態のuserの場合に処理を終える */
+    if (accessToken) return 'SIGNED_IN';
 
-      /* MFA認証の設定が必要な場合 */
-      if (nextStep.signInStep === 'CONTINUE_SIGN_IN_WITH_TOTP_SETUP') {
-        const uri = nextStep.totpSetupDetails
-          .getSetupUri('knowledge-hub')
-          .toString();
+    const { isSignedIn, nextStep } = await signIn({ username, password });
 
-        setSetupUri(uri);
-        setLoginStep('MFA_SETUP');
-        return 'MFA_SETUP';
-      }
+    /* MFA認証の設定が必要な場合 */
+    if (nextStep.signInStep === 'CONTINUE_SIGN_IN_WITH_TOTP_SETUP') {
+      /* QRコード用のURIや、secretを発行 */
+      const setupDetails = nextStep.totpSetupDetails;
+      /* QRコード用のURI */
+      setSetupUri(setupDetails.getSetupUri('knowledge-hub').toString());
+      /* QRコードが読めない人向けにテキストベースの値を生成 */
+      setSharedSecret(setupDetails.sharedSecret);
+      setLoginStep('MFA_SETUP');
+      return 'MFA_SETUP';
     }
 
-    if (!accessToken) {
-      throw new Error('access tokenを取得できません');
+    if (nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_TOTP_CODE') {
+      setLoginStep('MFA_CODE');
+      return 'MFA_CODE';
     }
+    if (isSignedIn && nextStep.signInStep === 'DONE') return 'SIGNED_IN';
 
-    const departmentId = sessionStorage.getItem('signupDepartmentId');
-    await fetchPostCreateUser(accessToken, departmentId);
-    sessionStorage.removeItem('signupDepartmentId');
-
-    await fetchPostCreateSession(`Bearer ${accessToken}`);
-
-    return 'SIGNED_IN';
+    throw new Error('未対応のログインステップ: ' + nextStep.signInStep);
   };
 
   const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
@@ -68,9 +91,7 @@ const LoginPage = () => {
 
       if (loginResult === 'MFA_SETUP') return;
 
-      notifyAuthSessionChanged();
-      router.replace('/');
-      router.refresh();
+      await completeAppLogin();
     } catch (error) {
       console.error('ログインに失敗しました:', error);
     }
@@ -80,12 +101,18 @@ const LoginPage = () => {
     return (
       <MfaSetupView
         setupUri={setupUri}
+        sharedSecret={sharedSecret}
+        completeAppLogin={completeAppLogin}
         onBack={() => {
           setSetupUri('');
+          setSharedSecret('');
           setLoginStep('LOGIN');
         }}
       />
     );
+  }
+  if (loginStep === 'MFA_CODE') {
+    return <MfaCodeView completeAppLogin={completeAppLogin} />;
   }
 
   return (
