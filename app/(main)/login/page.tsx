@@ -4,13 +4,14 @@ import { FcGoogle } from 'react-icons/fc';
 import { handleLogin } from './login';
 import { notifyAuthSessionChanged } from '@/lib/auth/auth-session-event';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const LoginPage = () => {
   const router = useRouter();
 
   return (
-    <main className="grid min-h-screen grid-cols-1 md:grid-cols-2 font-inter text-compass-ink bg-compass-bg">
-      <section className="relative hidden md:flex flex-col justify-between overflow-hidden bg-linear-to-br from-[#1E3A5F] via-[#234A78] to-compass-blue p-14 text-white">
+    <main className="grid min-h-screen grid-cols-1 bg-[#F7F6F3] font-inter text-[#454A52] md:grid-cols-2">
+      <section className="relative hidden flex-col justify-between overflow-hidden bg-linear-to-br from-[#1E3A5F] via-[#334B62] to-[#8A5938] p-14 text-white md:flex">
         {/* Left: brand / security panel */}
         <div className="flex items-center gap-2.5 font-sora text-lg font-extrabold"></div>
 
@@ -82,13 +83,13 @@ const LoginPage = () => {
       </section>
 
       {/* Right: form panel */}
-      <section className="flex items-center justify-center p-10 bg-gray-50">
+      <section className="flex items-center justify-center bg-[#F7F6F3] p-10">
         <div className="w-full max-w-sm">
           {/* mobile-only brand */}
           <div className="mb-6 flex items-center gap-2.5 font-sora text-lg font-extrabold md:hidden"></div>
 
-          <h2 className="font-sora text-2xl font-bold">ログイン</h2>
-          <p className="mb-7 mt-1.5 text-sm text-compass-muted">
+          <h2 className="font-sora text-2xl font-bold text-[#454A52]">ログイン</h2>
+          <p className="mb-7 mt-1.5 text-sm text-[#7B8899]">
             作成した社内専用アカウントにログインします
           </p>
 
@@ -110,7 +111,7 @@ const LoginPage = () => {
             <div className="mb-4">
               <label
                 htmlFor="email"
-                className="mb-1.5 block text-xs font-semibold text-compass-ink"
+                className="mb-1.5 block text-xs font-semibold text-[#57534F]"
               >
                 メールアドレス
               </label>
@@ -119,14 +120,14 @@ const LoginPage = () => {
                 type="email"
                 name="email"
                 placeholder="yamada@company.co.jp"
-                className="w-full rounded-[10px] border border-compass-border bg-white px-3.5 py-2.5 text-sm outline-none"
+                className="w-full rounded-[10px] border border-[#DED4CA] bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-[#A66334] focus:ring-2 focus:ring-[#A66334]/15"
               />
             </div>
 
             <div className="mb-4">
               <label
                 htmlFor="password"
-                className="mb-1.5 block text-xs font-semibold text-compass-ink"
+                className="mb-1.5 block text-xs font-semibold text-[#57534F]"
               >
                 パスワード
               </label>
@@ -135,23 +136,23 @@ const LoginPage = () => {
                 type="password"
                 name="password"
                 placeholder="••••••••••"
-                className="w-full rounded-[10px] border border-compass-border bg-white px-3.5 py-2.5 text-sm outline-none"
+                className="w-full rounded-[10px] border border-[#DED4CA] bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-[#A66334] focus:ring-2 focus:ring-[#A66334]/15"
               />
             </div>
 
             <div className="mb-6 flex items-center justify-between text-[13px]">
-              <label className="flex items-center gap-1.5 text-compass-muted">
+              <label className="flex items-center gap-1.5 text-[#7B8899]">
                 <input
                   type="checkbox"
                   // checked={remember}
                   // onChange={(e) => setRemember(e.target.checked)}
-                  className="accent-compass-blue"
+                  className="accent-[#A66334]"
                 />
                 ログイン状態を保持
               </label>
               <a
                 href="#"
-                className="font-medium text-compass-blue hover:underline"
+                className="font-medium text-[#A66334] hover:text-[#86502D] hover:underline"
               >
                 パスワードを忘れた方
               </a>
@@ -159,27 +160,37 @@ const LoginPage = () => {
 
             <button
               type="submit"
-              className="w-full rounded-[10px] bg-compass-blue py-3 text-[14.5px] font-bold text-white transition bg-[#254f8f] hover:opacity-70"
+              className="w-full rounded-[10px] bg-[#A66334] py-3 text-[14.5px] font-bold text-white transition hover:bg-[#86502D]"
             >
               ログイン
             </button>
           </form>
 
-          <div className="my-6 flex items-center gap-3 text-xs text-compass-muted">
-            <span className="h-px flex-1 bg-compass-border" />
+          <p className="mt-5 text-center text-[13px] text-[#7B8899]">
+            アカウントをお持ちでない方は
+            <Link
+              href="/signup"
+              className="ml-1 font-bold text-[#A66334] hover:text-[#86502D] hover:underline"
+            >
+              新規登録
+            </Link>
+          </p>
+
+          <div className="my-6 flex items-center gap-3 text-xs text-[#8A8178]">
+            <span className="h-px flex-1 bg-[#DED4CA]" />
             または
-            <span className="h-px flex-1 bg-compass-border" />
+            <span className="h-px flex-1 bg-[#DED4CA]" />
           </div>
 
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-2.5 rounded-[10px] border border-compass-border bg-white py-2.5 text-[13.5px] font-semibold text-compass-ink transition hover:opacity-70"
+            className="flex w-full items-center justify-center gap-2.5 rounded-[10px] border border-[#DED4CA] bg-white py-2.5 text-[13.5px] font-semibold text-[#57534F] transition hover:border-[#C88A5B] hover:bg-[#FFF8F1]"
           >
             <FcGoogle className="size-5" />
             Google Login
           </button>
 
-          <div className="mt-7 flex gap-2 rounded-[10px] bg-compass-bg p-3.5 text-xs text-compass-muted">
+          <div className="mt-7 flex gap-2 rounded-[10px] bg-[#FCF7F2] p-3.5 text-xs text-[#756C64]">
             🛡️
             ログイン情報はすべて暗号化され、アクセス履歴は監査ログとして記録されます。不明な点は情シスまでご連絡ください。
           </div>

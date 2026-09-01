@@ -12,7 +12,7 @@ export const restoreAppSession = async () => {
 
   if (!accessToken) return false;
 
-  const { message } = await fetchPostCreateSession('Bearer ' + accessToken);
+  const message = await fetchPostCreateSession('Bearer ' + accessToken);
   console.log('message', message);
   return true;
 };

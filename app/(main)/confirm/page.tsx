@@ -70,8 +70,8 @@ const ConfirmForm = () => {
     <div className="w-full max-w-sm">
       <div className="mb-6 flex items-center gap-2.5 font-sora text-lg font-extrabold md:hidden" />
 
-      <h2 className="font-sora text-2xl font-bold">メールアドレスの確認</h2>
-      <p className="mb-7 mt-1.5 text-sm leading-relaxed text-compass-muted">
+      <h2 className="font-sora text-2xl font-bold text-[#454A52]">メールアドレスの確認</h2>
+      <p className="mb-7 mt-1.5 text-sm leading-relaxed text-[#7B8899]">
         登録したメールアドレスに確認コードを送信しました。
         <br />
         メールに記載されたコードを入力してください。
@@ -81,7 +81,7 @@ const ConfirmForm = () => {
         <div className="mb-4">
           <label
             htmlFor="confirmationCode"
-            className="mb-1.5 block text-xs font-semibold text-compass-ink"
+            className="mb-1.5 block text-xs font-semibold text-[#57534F]"
           >
             確認コード
           </label>
@@ -97,7 +97,7 @@ const ConfirmForm = () => {
             maxLength={6}
             required
             autoFocus
-            className="w-full rounded-[10px] border border-compass-border bg-white px-3.5 py-3 text-center text-xl tracking-[0.35em] outline-none transition focus:border-[#254f8f] focus:ring-2 focus:ring-[#254f8f]/15"
+            className="w-full rounded-[10px] border border-[#DED4CA] bg-white px-3.5 py-3 text-center text-xl tracking-[0.35em] outline-none transition focus:border-[#A66334] focus:ring-2 focus:ring-[#A66334]/15"
           />
         </div>
 
@@ -122,19 +122,19 @@ const ConfirmForm = () => {
         <button
           type="submit"
           disabled={isConfirming || code.trim().length === 0}
-          className="w-full rounded-[10px] bg-[#254f8f] py-3 text-[14.5px] font-bold text-white transition hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-[10px] bg-[#A66334] py-3 text-[14.5px] font-bold text-white transition hover:bg-[#86502D] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isConfirming ? '確認中...' : 'アカウントを確認'}
         </button>
       </form>
 
-      <div className="mt-6 text-center text-[13px] text-compass-muted">
+      <div className="mt-6 text-center text-[13px] text-[#7B8899]">
         コードが届きませんか？
         <button
           type="button"
           onClick={handleResend}
           disabled={isResending}
-          className="ml-1 font-semibold text-[#254f8f] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+          className="ml-1 font-semibold text-[#A66334] hover:text-[#86502D] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isResending ? '再送中...' : '確認コードを再送'}
         </button>
@@ -143,13 +143,13 @@ const ConfirmForm = () => {
       <div className="mt-5 text-center text-[13px]">
         <Link
           href="/signup"
-          className="font-medium text-[#254f8f] hover:underline"
+          className="font-medium text-[#A66334] hover:text-[#86502D] hover:underline"
         >
           メールアドレスを変更する
         </Link>
       </div>
 
-      <div className="mt-7 flex gap-2 rounded-[10px] bg-compass-bg p-3.5 text-xs leading-relaxed text-compass-muted">
+      <div className="mt-7 flex gap-2 rounded-[10px] bg-[#FCF7F2] p-3.5 text-xs leading-relaxed text-[#756C64]">
         🛡️ 確認コードの有効期限が切れた場合は、新しいコードを再送してください。
       </div>
     </div>
@@ -158,8 +158,8 @@ const ConfirmForm = () => {
 
 const ConfirmPage = () => {
   return (
-    <main className="grid min-h-screen grid-cols-1 bg-compass-bg font-inter text-compass-ink md:grid-cols-2">
-      <section className="relative hidden flex-col justify-between overflow-hidden bg-linear-to-br from-[#1E3A5F] via-[#234A78] to-compass-blue p-14 text-white md:flex">
+    <main className="grid min-h-screen grid-cols-1 bg-[#F7F6F3] font-inter text-[#454A52] md:grid-cols-2">
+      <section className="relative hidden flex-col justify-between overflow-hidden bg-linear-to-br from-[#1E3A5F] via-[#334B62] to-[#8A5938] p-14 text-white md:flex">
         <div className="flex items-center gap-2.5 font-sora text-lg font-extrabold" />
 
         <div className="mt-10 max-w-sm">
@@ -229,7 +229,7 @@ const ConfirmPage = () => {
         </div>
       </section>
 
-      <section className="flex items-center justify-center bg-gray-50 p-10">
+      <section className="flex items-center justify-center bg-[#F7F6F3] p-10">
         <ConfirmForm />
       </section>
     </main>

@@ -210,9 +210,11 @@ const SecondSection = ({
                             <p className="text-sm font-bold text-[#344256]">
                               {article.author.name}
                             </p>
-                            <span className="text-xs text-[#7B8899]">
-                              {article.author.department?.name ?? '部署未設定'}
-                            </span>
+                            {article.author.department && (
+                              <span className="text-xs text-[#7B8899]">
+                                {article.author.department.name}
+                              </span>
+                            )}
                           </div>
                           <a
                             href={`mailto:${article.author.email}`}

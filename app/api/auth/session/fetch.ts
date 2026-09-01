@@ -1,3 +1,5 @@
+import { readJsonResponse } from '@/lib/http/read-json-response';
+
 export type SessionUser = {
   id: string;
   name: string;
@@ -20,7 +22,7 @@ export const fetchGetSession = async () => {
 
   if (!res.ok) return null;
 
-  const { user } = await res.json();
+  const { user } = await readJsonResponse<{ user: SessionUser }>(res);
   return user;
 };
 
@@ -36,7 +38,7 @@ export const fetchPostCreateSession = async (header: string) => {
       Authorization: header,
     },
   });
-  const { message } = await res.json();
+  const { message } = await readJsonResponse<{ message: string }>(res);
 
   if (!res.ok) throw new Error(message);
 
@@ -47,7 +49,7 @@ export const fetchDeleteSession = async () => {
   const res = await fetch('/api/auth/session', {
     method: 'DELETE',
   });
-  const { message } = await res.json();
+  const { message } = await readJsonResponse<{ message: string }>(res);
 
   if (!res.ok) throw new Error(message);
   return message;

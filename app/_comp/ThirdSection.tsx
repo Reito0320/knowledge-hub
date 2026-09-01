@@ -105,7 +105,9 @@ const ThirdSection = ({ latestArticles }: ThirdSectionProps) => {
                   <span className="font-semibold text-[#566477]">
                     {article.author.name}
                   </span>
-                  <span>{article.author.department?.name ?? '部署未設定'}</span>
+                  {article.author.department && (
+                    <span>{article.author.department.name}</span>
+                  )}
                   {article.postTags.map(({ tag }) => (
                     <span
                       key={tag.id}

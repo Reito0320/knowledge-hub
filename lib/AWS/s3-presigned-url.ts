@@ -1,6 +1,6 @@
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { getS3BucketName, s3Client } from './s3-client';
+import { getS3BucketName, getS3Client } from './s3-client';
 import 'server-only';
 
 export const PROFILE_IMAGE_UPLOAD_URL_EXPIRES_IN = 60;
@@ -19,7 +19,7 @@ export const createProfileImageUploadUrl = async (
     Metadata: { ownerId: userId },
   });
 
-  return getSignedUrl(s3Client, command, {
+  return getSignedUrl(getS3Client(), command, {
     expiresIn: PROFILE_IMAGE_UPLOAD_URL_EXPIRES_IN,
     signableHeaders: new Set(['content-type']),
   });
@@ -32,7 +32,7 @@ export const createProfileImageViewUrl = async (objectKey: string) => {
     Key: objectKey,
   });
 
-  return getSignedUrl(s3Client, command, {
+  return getSignedUrl(getS3Client(), command, {
     expiresIn: PROFILE_IMAGE_VIEW_URL_EXPIRES_IN,
   });
 };

@@ -23,6 +23,18 @@ export const getS3Region = () => {
   return region;
 };
 
-export const s3Client = new S3Client({
-  region: getS3Region(),
-});
+let s3Client: S3Client | null = null;
+
+/**
+ * S3を使用する処理が実行された時だけClientを作成する。
+ * これにより、S3を使わないAPIまで環境変数不足の影響で起動不能になるのを防ぐ。
+ */
+export const getS3Client = () => {
+  if (s3Client) return s3Client;
+
+  s3Client = new S3Client({
+    region: getS3Region(),
+  });
+
+  return s3Client;
+};
