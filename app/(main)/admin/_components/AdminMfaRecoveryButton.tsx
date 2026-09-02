@@ -30,20 +30,6 @@ const AdminMfaRecoveryButton = ({
   };
 
   const handleRecovery = async () => {
-    /*
-     * TODO: CognitoのMFA救済APIを実装したら、ここから呼び出す。
-     *
-     * 想定するサーバー側の流れ
-     * 1. POST /api/admin/users/[userId]/mfa-recovery を作る。
-     * 2. getCurrentAdmin()で、実行者がACTIVEなADMINか再検証する。
-     * 3. userIdから対象ユーザーを取得し、Cognitoで使うUsernameを確定する。
-     * 4. AWS SDK v3のAdminDeleteSoftwareTokenCommandをサーバー側で実行する。
-     *    入力にはUserPoolIdと対象ユーザーのUsernameを渡す。
-     * 5. 必要に応じて自前Sessionも無効化し、次回ログイン時にTOTPを再登録させる。
-     * 6. 管理者ID・対象ユーザーID・reason・実行日時を監査ログへ保存する。
-     *
-     * AWS認証情報やAdminDeleteSoftwareTokenCommandはブラウザ側へ置かない。
-     */
     if (isSubmitting) return;
 
     setIsSubmitting(true);
