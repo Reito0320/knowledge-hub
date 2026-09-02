@@ -1,5 +1,6 @@
 import { verifyCognitoAccessToken } from '@/lib/AWS/cognito-verify-access-token';
 import { getCognitoUser } from '@/lib/AWS/get-cognito-user';
+import type { Prisma } from '@/lib/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -57,20 +58,35 @@ export const POST = async (req: NextRequest) => {
       );
     }
     const adminEmail = process.env.ADMIN_ACCOUNT_EMAIL;
+    const isInitialAdmin = cognitoUser.email === adminEmail;
+
+    const updateData: Prisma.UserUpdateInput = {};
+    const createData: Prisma.UserCreateInput = {
+      id: payload.sub,
+      email: cognitoUser.email,
+      name: cognitoUser.name,
+      role: isInitialAdmin ? 'ADMIN' : 'MEMBER',
+      // 通常はすぐ利用可能にし、必要な場合だけ管理画面から状態を変更する。
+      // status: 'ACTIVE',
+    };
+
+    // UserCreateInputでは外部キーを直接渡さず、Prismaのリレーションとして部署を接続する。
+    if (departmentId) {
+      updateData.department = {
+        connect: { id: departmentId },
+      };
+      createData.department = {
+        connect: { id: departmentId },
+      };
+    }
 
     /* userがすでにDBにデータを保持しているなら、updateそうじゃなければcreate */
     const user = await prisma.user.upsert({
       where: {
         id: payload.sub,
       },
-      update: departmentId ? { departmentId } : {},
-      create: {
-        id: payload.sub,
-        email: cognitoUser.email,
-        name: cognitoUser.name,
-        departmentId,
-        role: cognitoUser.email === adminEmail ? 'ADMIN' : 'MEMBER',
-      },
+      update: updateData,
+      create: createData,
       select: {
         id: true,
       },

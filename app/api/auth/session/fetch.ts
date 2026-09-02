@@ -8,6 +8,7 @@ export type SessionUser = {
   jobTitle: string | null;
   bio: string | null;
   role: 'MEMBER' | 'ADMIN';
+  status: 'PENDING' | 'ACTIVE' | 'SUSPENDED';
   department: { id: string; name: string } | null;
 };
 

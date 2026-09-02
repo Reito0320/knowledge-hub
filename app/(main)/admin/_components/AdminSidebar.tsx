@@ -3,14 +3,10 @@ import {
   FiActivity,
   FiHome,
   FiSettings,
-  FiShield,
-  FiUsers,
 } from 'react-icons/fi';
 
 const navigationItems = [
   { label: 'ダッシュボード', icon: FiHome, isCurrent: true },
-  { label: 'ユーザー管理', icon: FiUsers, isCurrent: false },
-  { label: '権限管理', icon: FiShield, isCurrent: false },
   { label: '操作履歴', icon: FiActivity, isCurrent: false },
   { label: '管理設定', icon: FiSettings, isCurrent: false },
 ];

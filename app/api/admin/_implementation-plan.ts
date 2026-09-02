@@ -5,24 +5,31 @@
  * route.tsではないため、この設計メモ自体が公開APIになることはありません。
  * 実装を始める際は、機能単位で次のようにroute.tsを作成します。
  *
- * app/api/admin/users/route.ts                 ユーザー一覧・検索
- * app/api/admin/users/[userId]/role/route.ts   管理者権限の付与・解除
- * app/api/admin/users/[userId]/status/route.ts 利用停止・再開
+ * ユーザー一覧・検索                           管理画面のServer Componentで実装済み
+ * app/api/admin/users/[userId]/role/route.ts   管理者権限の付与・解除（実装済み）
+ * app/api/admin/users/[userId]/status/route.ts 承認・利用停止・再開（実装済み）
  * app/api/admin/users/[userId]/mfa/route.ts    CognitoのTOTP登録解除
  * app/api/admin/users/[userId]/session/route.ts 全端末のセッション失効
  * app/api/admin/audit-logs/route.ts            管理操作履歴の取得
  *
  * 実装する順番
  *
- * 1. Userへrole・statusを追加し、AdminAuditLogを定義する。
- * 2. getCurrentUser()で操作中のユーザーIDを取得する。
- * 3. DBのroleがADMINか検証する共通関数を作る。
- * 4. 各Route Handlerの最初で必ず管理者検証を実行する。
- * 5. リクエスト内容を検証してから、対象ユーザーを更新する。
- * 6. 「誰が・誰に・何をしたか」をAdminAuditLogへ保存する。
- * 7. MFA解除などのCognito操作はAWS SDKをサーバー側だけで実行する。
- * 8. UIを実データへ接続し、成功・失敗をtoastで通知する。
- * 9. 管理者APIの認可・入力値・監査ログをVitestでテストする。
+ * 実装済み
+ *
+ * - getCurrentAdmin()による管理者検証
+ * - DBのユーザー一覧・検索・権限別集計
+ * - MEMBERとADMINの権限変更
+ * - PENDING・ACTIVE・SUSPENDEDの利用状態変更
+ * - 自分自身と最後の管理者を保護する処理
+ * - 成功・失敗のtoast通知
+ * - 権限変更APIのVitest
+ *
+ * 今後の手順
+ *
+ * 1. AdminAuditLogを定義し、「誰が・誰に・何をしたか」を保存する。
+ * 2. 管理操作履歴を管理画面へ表示する。
+ * 3. MFA解除などのCognito操作はAWS SDKをサーバー側だけで実行する。
+ * 4. 監査ログ・Cognito操作をVitestでテストする。
  *
  * セキュリティ上の注意
  *

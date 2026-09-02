@@ -12,9 +12,10 @@ export const getCurrentUser = async () => {
   const payload = await decrypt(session);
   if (!payload || typeof payload.userId !== 'string') return;
   const id = payload.userId;
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: {
       id: id,
+      status: 'ACTIVE',
     },
     select: {
       id: true,

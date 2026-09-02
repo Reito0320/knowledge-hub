@@ -22,6 +22,7 @@ export const getCurrentAdmin = async () => {
       where: {
         id: payload.userId,
         role: 'ADMIN',
+        status: 'ACTIVE',
       },
       select: {
         id: true,

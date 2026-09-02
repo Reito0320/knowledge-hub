@@ -5,15 +5,99 @@ import { FiBell, FiShield } from 'react-icons/fi';
 import AdminSidebar from './_components/AdminSidebar';
 import AdminSummaryCards from './_components/AdminSummaryCards';
 import AdminUserTable from './_components/AdminUserTable';
+import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@/lib/generated/prisma/client';
+import { createOptionalProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
 
-const AdminPage = async () => {
+type AdminPageProps = {
+  searchParams: Promise<{
+    q?: string | string[];
+    role?: string | string[];
+    status?: string | string[];
+  }>;
+};
+
+const getFirstSearchParam = (value: string | string[] | undefined) => {
+  if (Array.isArray(value)) return value[0] ?? '';
+  return value ?? '';
+};
+
+const AdminPage = async ({ searchParams }: AdminPageProps) => {
   // CookieとDBの最新roleを使うため、管理画面はリクエストごとに描画する。
   await connection();
-
   const admin = await getCurrentAdmin();
-
   // Headerの表示制御を回避してURLを直接入力されても、管理画面は表示しない。
   if (!admin) redirect('/');
+
+  const params = await searchParams;
+  const keyword = getFirstSearchParam(params.q).trim();
+  const requestedRole = getFirstSearchParam(params.role);
+  const selectedRole: '' | 'MEMBER' | 'ADMIN' =
+    requestedRole === 'MEMBER' || requestedRole === 'ADMIN'
+      ? requestedRole
+      : '';
+  const requestedStatus = getFirstSearchParam(params.status);
+  let selectedStatus: '' | 'PENDING' | 'ACTIVE' | 'SUSPENDED' = '';
+  if (
+    requestedStatus === 'PENDING' ||
+    requestedStatus === 'ACTIVE' ||
+    requestedStatus === 'SUSPENDED'
+  ) {
+    selectedStatus = requestedStatus;
+  }
+
+  const userWhere: Prisma.UserWhereInput = {
+    ...(selectedRole ? { role: selectedRole } : {}),
+    ...(selectedStatus ? { status: selectedStatus } : {}),
+    ...(keyword
+      ? {
+          OR: [
+            { name: { contains: keyword, mode: 'insensitive' as const } },
+            { email: { contains: keyword, mode: 'insensitive' as const } },
+          ],
+        }
+      : {}),
+  };
+
+  // 一覧・検索件数・各権限の集計は互いに依存しないため並列で取得する。
+  const [userRecords, filteredUserCount, totalUserCount, activeUserCount, pendingUserCount, suspendedUserCount] =
+    await Promise.all([
+      prisma.user.findMany({
+        where: userWhere,
+        orderBy: [{ role: 'desc' }, { createdAt: 'desc' }],
+        take: 100,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          status: true,
+          photoObjectKey: true,
+          createdAt: true,
+          department: { select: { name: true } },
+        },
+      }),
+      prisma.user.count({ where: userWhere }),
+      prisma.user.count(),
+      prisma.user.count({ where: { status: 'ACTIVE' } }),
+      prisma.user.count({ where: { status: 'PENDING' } }),
+      prisma.user.count({ where: { status: 'SUSPENDED' } }),
+    ]);
+
+  // DBにはS3のobjectKeyだけを保存し、画面を開くたびに表示用URLへ変換する。
+  const users = await Promise.all(
+    userRecords.map(async (user) => {
+      const photoUrl = await createOptionalProfileImageViewUrl(
+        user.photoObjectKey,
+      );
+
+      return {
+        ...user,
+        photoObjectKey: undefined,
+        photoUrl,
+      };
+    }),
+  );
 
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-[#FAF7F3] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
@@ -45,8 +129,20 @@ const AdminPage = async () => {
         <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
           <AdminSidebar />
           <div className="min-w-0">
-            <AdminSummaryCards />
-            <AdminUserTable />
+            <AdminSummaryCards
+              totalUserCount={totalUserCount}
+              activeUserCount={activeUserCount}
+              pendingUserCount={pendingUserCount}
+              suspendedUserCount={suspendedUserCount}
+            />
+            <AdminUserTable
+              users={users}
+              currentAdminId={admin.id}
+              keyword={keyword}
+              selectedRole={selectedRole}
+              selectedStatus={selectedStatus}
+              totalCount={filteredUserCount}
+            />
           </div>
         </div>
       </div>
