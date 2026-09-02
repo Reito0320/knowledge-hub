@@ -16,6 +16,16 @@ enum UserRole {
   ADMIN
 }
 
+// Cognitoで本人確認されたユーザーが、このアプリを利用できる状態かを管理する。
+enum UserStatus {
+  // 管理者による利用承認を待っている。
+  PENDING
+  // アプリの利用が許可されている。
+  ACTIVE
+  // 管理者によってアプリの利用を停止されている。
+  SUSPENDED
+}
+
 // 技術記事と、それ以外の業務ノウハウを検索・表示時に分ける。
 enum PostCategory {
   TECH
@@ -41,6 +51,21 @@ enum PostVisibility {
   PRIVATE
 }
 
+// 管理者が実行した重要操作の種類。監査ログを文字列の自由入力にせず集計しやすくする。
+enum AdminAuditAction {
+  MFA_TOTP_RESET
+}
+
+// 外部サービスを伴う管理者操作の実行結果。
+enum AdminAuditStatus {
+  // Cognitoへ操作を送る前に記録した状態。
+  PENDING
+  // Cognito側の操作まで完了した状態。
+  SUCCEEDED
+  // Cognito側の操作に失敗した状態。
+  FAILED
+}
+
 // Cognitoユーザーと1対1で対応するアプリ利用者。
 // idにはCognito Access Tokenのsubを保存し、認証ユーザーを一意に結び付ける。
 model User {
@@ -59,6 +84,8 @@ model User {
   bio            String?
   /// アプリ内の操作権限。通常ユーザーはMEMBER。
   role           UserRole    @default(MEMBER)
+  /// アプリの利用状態。通常は利用可能で作成し、管理者が必要に応じて変更する。
+  status         UserStatus  @default(ACTIVE)
   /// 所属部署を参照する外部キー。未設定も許可する。
   departmentId   String?
   /// departmentIdに対応する所属部署。
@@ -77,6 +104,7 @@ model User {
   updatedAt      DateTime    @updatedAt
 
   @@index([departmentId])
+  @@index([status])
 }
 
 // 投稿者の所属を表示し、メンバー・記事を部署単位で検索するためのマスタ。
@@ -231,4 +259,31 @@ model Bookmark {
 
   @@id([userId, postId])
   @@index([postId])
+}
+
+// MFA救済など、後から実行者・対象・理由・結果を追跡する必要がある管理者操作の記録。
+// Userとの外部キーは設定せず、ユーザー削除後もCognito subを監査記録として残す。
+model AdminAuditLog {
+  /// 監査ログを識別するUUID。
+  id           String           @id @default(uuid())
+  /// 実行した管理者操作の種類。
+  action       AdminAuditAction
+  /// 操作の実行状況。
+  status       AdminAuditStatus @default(PENDING)
+  /// 操作を実行した管理者のCognito sub。
+  adminUserId  String
+  /// 操作対象ユーザーのCognito sub。
+  targetUserId String
+  /// 本人確認後に管理者が入力した対応理由。
+  reason       String
+  /// 失敗時の調査に使うサーバー側エラー概要。成功時はnull。
+  errorMessage String?
+  /// 管理者が操作を開始した日時。
+  createdAt    DateTime         @default(now())
+  /// Cognito側の成否が確定した日時。処理中はnull。
+  completedAt  DateTime?
+
+  @@index([adminUserId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([action, status, createdAt])
 }

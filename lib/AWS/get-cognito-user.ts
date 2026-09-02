@@ -1,5 +1,5 @@
 /* 使いまわせるファイル */
-
+import 'server-only';
 import {
   CognitoIdentityProviderClient,
   GetUserCommand,

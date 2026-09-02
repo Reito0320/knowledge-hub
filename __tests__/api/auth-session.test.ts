@@ -53,6 +53,7 @@ describe('POST /api/auth/session', () => {
 
     mocks.findUniqueUser.mockResolvedValue({
       id: 'cognito-sub-123',
+      status: 'ACTIVE',
     });
 
     mocks.createSession.mockResolvedValue(undefined);
@@ -90,7 +91,7 @@ describe('POST /api/auth/session', () => {
     expect(mocks.verifyToken).toHaveBeenCalledWith('test-access-token');
     expect(mocks.findUniqueUser).toHaveBeenCalledWith({
       where: { id: 'cognito-sub-123' },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     expect(mocks.createSession).toHaveBeenCalledWith('cognito-sub-123');
   });
@@ -109,6 +110,42 @@ describe('POST /api/auth/session', () => {
 
     expect(response.status).toBe(403);
     expect(mocks.findUniqueUser).toHaveBeenCalledOnce();
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it('承認待ちユーザーにはSessionを作らない', async () => {
+    mocks.findUniqueUser.mockResolvedValue({
+      id: 'cognito-sub-123',
+      status: 'PENDING',
+    });
+
+    const request = new NextRequest('http://localhost/api/auth/session', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-access-token' },
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.message).toBe('管理者の承認待ちです。');
+    expect(mocks.createSession).not.toHaveBeenCalled();
+  });
+
+  it('利用停止中のユーザーにはSessionを作らない', async () => {
+    mocks.findUniqueUser.mockResolvedValue({
+      id: 'cognito-sub-123',
+      status: 'SUSPENDED',
+    });
+
+    const request = new NextRequest('http://localhost/api/auth/session', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-access-token' },
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(403);
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 });

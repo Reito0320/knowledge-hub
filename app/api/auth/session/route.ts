@@ -43,6 +43,8 @@ export const GET = async () => {
         photoObjectKey: true,
         jobTitle: true,
         bio: true,
+        role: true,
+        status: true,
         department: { select: { id: true, name: true } },
       },
     });
@@ -54,6 +56,15 @@ export const GET = async () => {
         },
         { status: 401 },
       );
+
+    if (user.status !== 'ACTIVE') {
+      await deleteCookie('session');
+
+      let message = 'このアカウントは利用停止中です。';
+      if (user.status === 'PENDING') message = '管理者の承認待ちです。';
+
+      return NextResponse.json({ message }, { status: 403 });
+    }
 
     let photoUrl: string | null = null;
 
@@ -123,6 +134,7 @@ export const POST = async (req: NextRequest) => {
       },
       select: {
         id: true,
+        status: true,
       },
     });
 
@@ -133,6 +145,20 @@ export const POST = async (req: NextRequest) => {
         },
         { status: 403 },
       );
+
+    if (user.status === 'PENDING') {
+      return NextResponse.json(
+        { message: '管理者の承認待ちです。' },
+        { status: 403 },
+      );
+    }
+
+    if (user.status === 'SUSPENDED') {
+      return NextResponse.json(
+        { message: 'このアカウントは利用停止中です。' },
+        { status: 403 },
+      );
+    }
 
     await createSession(user.id);
 
