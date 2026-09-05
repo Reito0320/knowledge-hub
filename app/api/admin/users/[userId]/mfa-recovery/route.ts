@@ -182,11 +182,26 @@ export const POST = async (
     await completeAuditLog(auditLog.id, 'SUCCEEDED');
 
     /*
-     * TODO: 既存セッション失効は別工程で実装する。
-     * - Cognito: AdminUserGlobalSignOutCommandで対象ユーザーの既存トークンを無効化する。
-     * - 自前Session: SessionをDB管理するかsessionVersionをUserへ持たせ、
-     *   対象ユーザーの全Sessionをサーバー側から無効化できるようにする。
-     * ブラウザのCookie削除だけでは、別端末のSessionまでは無効化できない点に注意する。
+     * TODO(session-revocation): 既存Session失効は次の順序で追加する。
+     *
+     * 1. `lib/AWS/admin-user-global-sign-out.ts`を作り、IAM認証が必要な
+     *    AdminUserGlobalSignOutCommandへUserPoolIdと対象Userのsubを渡す。
+     * 2. AmplifyのSSR Compute roleへ
+     *    `cognito-idp:AdminUserGlobalSignOut`権限を追加する。
+     * 3. Userへ`sessionVersion Int @default(1)`と
+     *    `cognitoTokensValidAfter DateTime?`を追加する。
+     * 4. createSession()でDBのsessionVersionを取得し、自前JWTへ含める。
+     * 5. 共通のSession検証関数でJWTとDBのsessionVersionを毎回比較する。
+     * 6. この場所で対象UserのsessionVersionを`increment: 1`して、
+     *    そのUserへ発行済みの自前JWTを全端末まとめて無効化する。
+     * 7. cognitoTokensValidAfterを現在時刻へ更新し、それ以前のAccess Tokenから
+     *    新しい自前Sessionが再発行されることを防ぐ。
+     * 8. Cognito失効と自前Session失効の結果も監査Logへ記録する。
+     *
+     * AdminUserGlobalSignOutはCognitoのID・Access・Refresh Tokenを失効させるが、
+     * Browser内の文字列やHosted UIのCookieを物理的に削除する処理ではない。
+     * また、このAPIから別端末のHttpOnly Cookieを直接削除することはできないため、
+     * 自前JWT側はsessionVersionの不一致によってServerで拒否する。
      */
 
     return NextResponse.json({

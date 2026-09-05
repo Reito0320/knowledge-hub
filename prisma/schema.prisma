@@ -86,6 +86,11 @@ model User {
   role           UserRole    @default(MEMBER)
   /// アプリの利用状態。通常は利用可能で作成し、管理者が必要に応じて変更する。
   status         UserStatus  @default(ACTIVE)
+  // TODO(session-revocation): 対象ユーザーの自前Sessionを全端末で失効できるようにするとき、
+  // `sessionVersion Int @default(1)`を追加する。管理者が強制Signoutを実行したらincrementし、
+  // JWT内のsessionVersionとDBの最新値が一致する場合だけSessionを有効と判断する。
+  // さらに`cognitoTokensValidAfter DateTime?`を追加し、管理者がCognitoをGlobal Sign-outした
+  // 時刻より前に発行されたAccess Tokenから自前Sessionを再発行できないようにする。
   /// 所属部署を参照する外部キー。未設定も許可する。
   departmentId   String?
   /// departmentIdに対応する所属部署。

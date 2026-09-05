@@ -128,6 +128,16 @@ export const POST = async (req: NextRequest) => {
         { status: 401 },
       );
 
+    /*
+     * TODO(session-revocation): UserへcognitoTokensValidAfterを追加したら、User検索時に
+     * その値も取得する。payload.iat（秒）をDateへ変換し、cognitoTokensValidAfter以前に
+     * 発行されたAccess Tokenなら401を返す。
+     *
+     * AdminUserGlobalSignOut後も、署名と期限だけをローカル検証するaws-jwt-verifyは
+     * Cognitoの失効状態を自動照会しない。そのため、この比較がないと失効前のTokenから
+     * 新しい自前Sessionを再発行できる時間が残る。
+     */
+
     const user = await prisma.user.findUnique({
       where: {
         id: payload.sub,
