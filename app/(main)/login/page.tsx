@@ -5,7 +5,6 @@ import { fetchPostCreateUser } from '@/app/api/users/provision/fetch';
 import { notifyAuthSessionChanged } from '@/lib/auth/auth-session-event';
 import { fetchAuthSession, signIn } from 'aws-amplify/auth';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import MfaSetupView from './_components/MfaSetupView';
 import MfaCodeView from './_components/MfaCodeView';
@@ -14,7 +13,6 @@ type LoginStep = 'LOGIN' | 'MFA_SETUP' | 'MFA_CODE';
 type LoginResult = 'SIGNED_IN' | 'MFA_SETUP' | 'MFA_CODE';
 
 const LoginPage = () => {
-  const router = useRouter();
   const [loginStep, setLoginStep] = useState<LoginStep>('LOGIN');
   const [setupUri, setSetupUri] = useState('');
   const [sharedSecret, setSharedSecret] = useState('');
@@ -23,8 +21,18 @@ const LoginPage = () => {
    * cognitoのtokenを検証し、sessionとuserの情報をDBに保存させる処理
    */
   const completeAppLogin = async () => {
-    const authSession = await fetchAuthSession();
-    const accessToken = await authSession.tokens?.accessToken.toString();
+    // confirmSignIn直後はAmplifyのToken保存が反映されるまで僅かに時間が
+    // かかる場合があるため、最新Sessionを短時間だけ再確認する。
+    let accessToken: string | undefined;
+    for (let attempt = 0; attempt < 3 && !accessToken; attempt += 1) {
+      const authSession = await fetchAuthSession({
+        forceRefresh: attempt > 0,
+      });
+      accessToken = authSession.tokens?.accessToken?.toString();
+      if (!accessToken && attempt < 2) {
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+      }
+    }
 
     if (!accessToken) throw new Error('cognitoのtokenが取得できませんでした。');
 
@@ -39,8 +47,9 @@ const LoginPage = () => {
 
     notifyAuthSessionChanged();
 
-    router.replace('/');
-    router.refresh();
+    // Cookie設定後の完全なページ読込で、ProxyとServer Componentにも
+    // 新しい認証状態を確実に反映する。
+    window.location.replace('/');
   };
 
   /**
@@ -88,7 +97,7 @@ const LoginPage = () => {
     try {
       const loginResult = await handleLogin(event);
 
-      if (loginResult === 'MFA_SETUP') return;
+      if (loginResult === 'MFA_SETUP' || loginResult === 'MFA_CODE') return;
 
       await completeAppLogin();
     } catch (error) {
