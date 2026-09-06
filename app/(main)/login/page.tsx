@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import MfaSetupView from './_components/MfaSetupView';
 import MfaCodeView from './_components/MfaCodeView';
+import { toast } from 'react-toastify';
 
 type LoginStep = 'LOGIN' | 'MFA_SETUP' | 'MFA_CODE';
 type LoginResult = 'SIGNED_IN' | 'MFA_SETUP' | 'MFA_CODE';
@@ -16,6 +17,7 @@ const LoginPage = () => {
   const [loginStep, setLoginStep] = useState<LoginStep>('LOGIN');
   const [setupUri, setSetupUri] = useState('');
   const [sharedSecret, setSharedSecret] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   /**
    * cognitoのtokenを検証し、sessionとuserの情報をDBに保存させる処理
@@ -94,6 +96,9 @@ const LoginPage = () => {
   };
 
   const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
     try {
       const loginResult = await handleLogin(event);
 
@@ -102,6 +107,21 @@ const LoginPage = () => {
       await completeAppLogin();
     } catch (error) {
       console.error('ログインに失敗しました:', error);
+      if (error instanceof Error && error.name === 'UserNotFoundException') {
+        toast.info(
+          <span>
+            アカウントが登録されていません。{' '}
+            <Link href="/signup" className="font-bold underline">
+              新規登録へ
+            </Link>
+          </span>,
+          { autoClose: 8000 },
+        );
+      } else {
+        toast.error('ログインできませんでした。メールアドレスとパスワードを確認してください。');
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -262,9 +282,10 @@ const LoginPage = () => {
 
             <button
               type="submit"
-              className="w-full rounded-[10px] bg-[#A66334] py-3 text-[14.5px] font-bold text-white transition hover:bg-[#86502D]"
+              disabled={isLoggingIn}
+              className="w-full rounded-[10px] bg-[#A66334] py-3 text-[14.5px] font-bold text-white transition hover:bg-[#86502D] disabled:cursor-wait disabled:opacity-60"
             >
-              ログイン
+              {isLoggingIn ? '確認中…' : 'ログイン'}
             </button>
           </form>
 
