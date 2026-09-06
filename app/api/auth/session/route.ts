@@ -1,40 +1,33 @@
-import { verifyCognitoAccessToken } from '@/lib/AWS/cognito-verify-access-token';
 import { createProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
-import { deleteCookie, getCookie } from '@/lib/cookie';
-import { decrypt } from '@/lib/jwt';
+import {
+  COGNITO_ACCESS_TOKEN_COOKIE,
+  getVerifiedCognitoSession,
+  verifyActiveCognitoAccessToken,
+} from '@/lib/auth/cognito-session';
+import { deleteCookie, setCookie } from '@/lib/cookie';
 import { prisma } from '@/lib/prisma';
-import { createSession } from '@/lib/session';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * 自前sessionを取得して、それを元にpayloadからuserIdを取り出し、それを使ってuser情報を取得して返すGET api
+ * Cognito Access Tokenを確認し、subからUser情報を取得するGET API。
  * @returns
  */
 export const GET = async () => {
   try {
-    const sessionToken = await getCookie('session');
-
-    if (!sessionToken)
+    const session = await getVerifiedCognitoSession();
+    if (!session) {
+      await deleteCookie(COGNITO_ACCESS_TOKEN_COOKIE);
       return NextResponse.json(
         {
-          message: 'session cookieがありません。',
+          message: '有効なCognitoセッションがありません。',
         },
         { status: 401 },
       );
-
-    const payload = await decrypt(sessionToken);
-
-    if (!payload || typeof payload.userId !== 'string')
-      return NextResponse.json(
-        {
-          message: 'sessionを確認できませんでした。',
-        },
-        { status: 401 },
-      );
+    }
 
     const user = await prisma.user.findUnique({
       where: {
-        id: payload.userId,
+        id: session.payload.sub,
       },
       select: {
         id: true,
@@ -43,6 +36,8 @@ export const GET = async () => {
         photoObjectKey: true,
         jobTitle: true,
         bio: true,
+        role: true,
+        status: true,
         department: { select: { id: true, name: true } },
       },
     });
@@ -54,6 +49,15 @@ export const GET = async () => {
         },
         { status: 401 },
       );
+
+    if (user.status !== 'ACTIVE') {
+      await deleteCookie(COGNITO_ACCESS_TOKEN_COOKIE);
+
+      let message = 'このアカウントは利用停止中です。';
+      if (user.status === 'PENDING') message = '管理者の承認待ちです。';
+
+      return NextResponse.json({ message }, { status: 403 });
+    }
 
     let photoUrl: string | null = null;
 
@@ -86,9 +90,8 @@ export const GET = async () => {
 };
 
 /**
- * cognitoTokenが埋め込まれたheaderを取得して、tokenを抽出し検証。
- * 検証されたtokenからpayloadを発行して、payloadからsubを取得して、subからuserの情報を探す。
- * 見つかった場合は自前sessionの発行
+ * Cognito Access Tokenを検証し、Server Componentでも利用できるよう
+ * Token自体をHttpOnly Cookieへ保存する。
  * @returns void
  */
 export const POST = async (req: NextRequest) => {
@@ -107,7 +110,14 @@ export const POST = async (req: NextRequest) => {
     /* headerの中からtokenを切り出す */
     const accessToken = authorization.slice('Bearer '.length);
     /* tokenの検証をし、正常であればpayloadが発行される */
-    const payload = await verifyCognitoAccessToken(accessToken);
+    const cognitoSession = await verifyActiveCognitoAccessToken(accessToken);
+    if (!cognitoSession) {
+      return NextResponse.json(
+        { message: 'Cognitoで有効な認証トークンではありません。' },
+        { status: 401 },
+      );
+    }
+    const { payload } = cognitoSession;
 
     if (!payload.sub)
       return NextResponse.json(
@@ -123,6 +133,7 @@ export const POST = async (req: NextRequest) => {
       },
       select: {
         id: true,
+        status: true,
       },
     });
 
@@ -134,8 +145,23 @@ export const POST = async (req: NextRequest) => {
         { status: 403 },
       );
 
-    /* 自前のsession作成関数を使う。ここでpayload.uidを使わないのは、db経由で発行されたものと明確にするため */
-    await createSession(user.id);
+    if (user.status === 'PENDING') {
+      return NextResponse.json(
+        { message: '管理者の承認待ちです。' },
+        { status: 403 },
+      );
+    }
+
+    if (user.status === 'SUSPENDED') {
+      return NextResponse.json(
+        { message: 'このアカウントは利用停止中です。' },
+        { status: 403 },
+      );
+    }
+
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    const maxAge = payload.exp ? Math.max(1, payload.exp - nowInSeconds) : 3600;
+    await setCookie(COGNITO_ACCESS_TOKEN_COOKIE, accessToken, maxAge);
 
     return NextResponse.json(
       {
@@ -154,8 +180,11 @@ export const POST = async (req: NextRequest) => {
 
 export const DELETE = async () => {
   try {
-    /* sessionを削除する通信 */
-    await deleteCookie('session');
+    await Promise.all([
+      deleteCookie(COGNITO_ACCESS_TOKEN_COOKIE),
+      // 移行前の独自Session Cookieが残っていれば同時に破棄する。
+      deleteCookie('session'),
+    ]);
     return NextResponse.json(
       {
         message: 'sessionの削除を実施しました。',

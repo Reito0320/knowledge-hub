@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth/get-current-user';
 import { prisma } from '@/lib/prisma';
 import ActivityArticleList from './_components/ActivityArticleList';
 import { connection } from 'next/server';
+import { createOptionalProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
 
 const ActivityPage = async () => {
   // Cookieを読む画面なので、ビルド時の静的生成ではなくリクエスト時に描画する。
@@ -29,32 +30,43 @@ const ActivityPage = async () => {
     prisma.comment.findMany({
       where: { authorId: userId, post: visiblePostWhere },
       orderBy: { createdAt: 'desc' },
-      select: { content: true, createdAt: true, post: { select: { id: true, title: true, excerpt: true } } },
+      select: { content: true, createdAt: true, post: { select: { id: true, title: true, excerpt: true, author: { select: { name: true, photoObjectKey: true } } } } },
     }),
     prisma.postLike.findMany({
       where: { userId, post: visiblePostWhere },
       orderBy: { createdAt: 'desc' },
-      select: { createdAt: true, post: { select: { id: true, title: true, excerpt: true } } },
+      select: { createdAt: true, post: { select: { id: true, title: true, excerpt: true, author: { select: { name: true, photoObjectKey: true } } } } },
     }),
   ]);
 
   // 同じ記事へ複数回コメントしていても、一覧では最新の1件にまとめる。
-  const commentedArticles = Array.from(
+  const commentedRecords = Array.from(
     new Map(comments.map((comment) => [comment.post.id, comment])).values(),
-  ).map((comment) => ({
-    postId: comment.post.id,
-    title: comment.post.title,
-    excerpt: comment.post.excerpt,
-    occurredAt: comment.createdAt,
-    note: `コメント: ${comment.content}`,
-  }));
+  );
 
-  const likedArticles = likes.map((like) => ({
-    postId: like.post.id,
-    title: like.post.title,
-    excerpt: like.post.excerpt,
-    occurredAt: like.createdAt,
-  }));
+  const [commentedArticles, likedArticles] = await Promise.all([
+    Promise.all(commentedRecords.map(async (comment) => ({
+      postId: comment.post.id,
+      title: comment.post.title,
+      excerpt: comment.post.excerpt,
+      occurredAt: comment.createdAt,
+      note: `コメント: ${comment.content}`,
+      author: {
+        name: comment.post.author.name,
+        photoUrl: await createOptionalProfileImageViewUrl(comment.post.author.photoObjectKey),
+      },
+    }))),
+    Promise.all(likes.map(async (like) => ({
+      postId: like.post.id,
+      title: like.post.title,
+      excerpt: like.post.excerpt,
+      occurredAt: like.createdAt,
+      author: {
+        name: like.post.author.name,
+        photoUrl: await createOptionalProfileImageViewUrl(like.post.author.photoObjectKey),
+      },
+    }))),
+  ]);
 
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-[#FAF7F3] px-4 py-10 sm:px-6">

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createPostTagData } from '@/lib/post/create-post-tag-data';
 import { getCurrentUser } from '@/lib/auth/get-current-user';
 import { isPostVisibility } from '@/lib/post/post-visibility';
+import { createNewPostNotifications } from '@/lib/notification/create-new-post-notifications';
+import { createOptionalProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
 
 export const POST = async (req: NextRequest) => {
   try {
@@ -40,24 +42,40 @@ export const POST = async (req: NextRequest) => {
 
     const postTagData = createPostTagData(tags);
 
-    const post = await prisma.post.create({
-      data: {
-        title: title.trim(),
-        excerpt: typeof excerpt === 'string' ? excerpt.trim() || null : null,
-        content,
-        category,
-        visibility,
-        status: shouldPublish ? 'PUBLISHED' : 'DRAFT',
-        publishedAt: shouldPublish ? new Date() : null,
-        authorId: currentUserId,
-        postTags: {
-          create: postTagData,
+    const post = await prisma.$transaction(async (tx) => {
+      const createdPost = await tx.post.create({
+        data: {
+          title: title.trim(),
+          excerpt: typeof excerpt === 'string' ? excerpt.trim() || null : null,
+          content,
+          category,
+          visibility,
+          status: shouldPublish ? 'PUBLISHED' : 'DRAFT',
+          publishedAt: shouldPublish ? new Date() : null,
+          authorId: currentUserId,
+          postTags: {
+            create: postTagData,
+          },
         },
-      },
-      select: {
-        id: true,
-        updatedAt: true,
-      },
+        select: {
+          id: true,
+          updatedAt: true,
+          authorId: true,
+          visibility: true,
+          author: { select: { departmentId: true } },
+        },
+      });
+
+      if (shouldPublish) {
+        await createNewPostNotifications(tx, {
+          id: createdPost.id,
+          authorId: createdPost.authorId,
+          authorDepartmentId: createdPost.author.departmentId,
+          visibility: createdPost.visibility,
+        });
+      }
+
+      return createdPost;
     });
 
     return NextResponse.json(
@@ -105,6 +123,7 @@ export const GET = async () => {
         viewCount: true,
         publishedAt: true,
         updatedAt: true,
+        author: { select: { name: true, photoObjectKey: true } },
         postTags: {
           select: {
             tag: {
@@ -127,9 +146,21 @@ export const GET = async () => {
       },
     });
 
+    const posts = await Promise.all(
+      data.map(async (post) => ({
+        ...post,
+        author: {
+          name: post.author.name,
+          photoUrl: await createOptionalProfileImageViewUrl(
+            post.author.photoObjectKey,
+          ),
+        },
+      })),
+    );
+
     return NextResponse.json({
       message: '投稿の取得が完了しました。',
-      data,
+      data: posts,
     });
   } catch (error) {
     console.error(error);

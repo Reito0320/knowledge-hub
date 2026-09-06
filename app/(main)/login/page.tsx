@@ -1,13 +1,127 @@
 'use client';
 
-import { FcGoogle } from 'react-icons/fc';
-import { handleLogin } from './login';
+import { fetchPostCreateSession } from '@/app/api/auth/session/fetch';
+import { fetchPostCreateUser } from '@/app/api/users/provision/fetch';
 import { notifyAuthSessionChanged } from '@/lib/auth/auth-session-event';
-import { useRouter } from 'next/navigation';
+import { fetchAuthSession, signIn } from 'aws-amplify/auth';
 import Link from 'next/link';
+import { useState } from 'react';
+import MfaSetupView from './_components/MfaSetupView';
+import MfaCodeView from './_components/MfaCodeView';
+
+type LoginStep = 'LOGIN' | 'MFA_SETUP' | 'MFA_CODE';
+type LoginResult = 'SIGNED_IN' | 'MFA_SETUP' | 'MFA_CODE';
 
 const LoginPage = () => {
-  const router = useRouter();
+  const [loginStep, setLoginStep] = useState<LoginStep>('LOGIN');
+  const [setupUri, setSetupUri] = useState('');
+  const [sharedSecret, setSharedSecret] = useState('');
+
+  /**
+   * cognitoのtokenを検証し、sessionとuserの情報をDBに保存させる処理
+   */
+  const completeAppLogin = async () => {
+    // confirmSignIn直後はAmplifyのToken保存が反映されるまで僅かに時間が
+    // かかる場合があるため、最新Sessionを短時間だけ再確認する。
+    let accessToken: string | undefined;
+    for (let attempt = 0; attempt < 3 && !accessToken; attempt += 1) {
+      const authSession = await fetchAuthSession({
+        forceRefresh: attempt > 0,
+      });
+      accessToken = authSession.tokens?.accessToken?.toString();
+      if (!accessToken && attempt < 2) {
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+      }
+    }
+
+    if (!accessToken) throw new Error('cognitoのtokenが取得できませんでした。');
+
+    const departmentId = sessionStorage.getItem('signupDepartmentId');
+
+    /* cognito userをDBへ保存・確認 */
+    await fetchPostCreateUser(accessToken, departmentId);
+
+    sessionStorage.removeItem('signupDepartmentId');
+
+    await fetchPostCreateSession('Bearer ' + accessToken);
+
+    notifyAuthSessionChanged();
+
+    // Cookie設定後の完全なページ読込で、ProxyとServer Componentにも
+    // 新しい認証状態を確実に反映する。
+    window.location.replace('/');
+  };
+
+  /**
+   * Cognitoへログインし、Access TokenをServer用Cookieへ同期する。
+   */
+  const handleLogin = async (
+    event: React.SubmitEvent<HTMLFormElement>,
+  ): Promise<LoginResult> => {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const username = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    const authSession = await fetchAuthSession();
+    const accessToken = authSession.tokens?.accessToken?.toString();
+
+    /* すでにsignin状態のuserの場合に処理を終える */
+    if (accessToken) return 'SIGNED_IN';
+
+    const { isSignedIn, nextStep } = await signIn({ username, password });
+
+    /* MFA認証の設定が必要な場合 */
+    if (nextStep.signInStep === 'CONTINUE_SIGN_IN_WITH_TOTP_SETUP') {
+      /* QRコード用のURIや、secretを発行 */
+      const setupDetails = nextStep.totpSetupDetails;
+      /* QRコード用のURI */
+      setSetupUri(setupDetails.getSetupUri('knowledge-hub').toString());
+      /* QRコードが読めない人向けにテキストベースの値を生成 */
+      setSharedSecret(setupDetails.sharedSecret);
+      setLoginStep('MFA_SETUP');
+      return 'MFA_SETUP';
+    }
+
+    if (nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_TOTP_CODE') {
+      setLoginStep('MFA_CODE');
+      return 'MFA_CODE';
+    }
+    if (isSignedIn && nextStep.signInStep === 'DONE') return 'SIGNED_IN';
+
+    throw new Error('未対応のログインステップ: ' + nextStep.signInStep);
+  };
+
+  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
+    try {
+      const loginResult = await handleLogin(event);
+
+      if (loginResult === 'MFA_SETUP' || loginResult === 'MFA_CODE') return;
+
+      await completeAppLogin();
+    } catch (error) {
+      console.error('ログインに失敗しました:', error);
+    }
+  };
+
+  if (loginStep === 'MFA_SETUP') {
+    return (
+      <MfaSetupView
+        setupUri={setupUri}
+        sharedSecret={sharedSecret}
+        completeAppLogin={completeAppLogin}
+        onBack={() => {
+          setSetupUri('');
+          setSharedSecret('');
+          setLoginStep('LOGIN');
+        }}
+      />
+    );
+  }
+  if (loginStep === 'MFA_CODE') {
+    return <MfaCodeView completeAppLogin={completeAppLogin} />;
+  }
 
   return (
     <main className="grid min-h-screen grid-cols-1 bg-[#F7F6F3] font-inter text-[#454A52] md:grid-cols-2">
@@ -88,26 +202,14 @@ const LoginPage = () => {
           {/* mobile-only brand */}
           <div className="mb-6 flex items-center gap-2.5 font-sora text-lg font-extrabold md:hidden"></div>
 
-          <h2 className="font-sora text-2xl font-bold text-[#454A52]">ログイン</h2>
+          <h2 className="font-sora text-2xl font-bold text-[#454A52]">
+            ログイン
+          </h2>
           <p className="mb-7 mt-1.5 text-sm text-[#7B8899]">
             作成した社内専用アカウントにログインします
           </p>
 
-          <form
-            onSubmit={async (e) => {
-              try {
-                const isLoggedIn = await handleLogin(e);
-
-                if (!isLoggedIn) return;
-              } catch (error) {
-                console.error(error);
-                return;
-              }
-              notifyAuthSessionChanged();
-              router.replace('/');
-              router.refresh();
-            }}
-          >
+          <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label
                 htmlFor="email"
@@ -175,20 +277,6 @@ const LoginPage = () => {
               新規登録
             </Link>
           </p>
-
-          <div className="my-6 flex items-center gap-3 text-xs text-[#8A8178]">
-            <span className="h-px flex-1 bg-[#DED4CA]" />
-            または
-            <span className="h-px flex-1 bg-[#DED4CA]" />
-          </div>
-
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-2.5 rounded-[10px] border border-[#DED4CA] bg-white py-2.5 text-[13.5px] font-semibold text-[#57534F] transition hover:border-[#C88A5B] hover:bg-[#FFF8F1]"
-          >
-            <FcGoogle className="size-5" />
-            Google Login
-          </button>
 
           <div className="mt-7 flex gap-2 rounded-[10px] bg-[#FCF7F2] p-3.5 text-xs text-[#756C64]">
             🛡️

@@ -7,11 +7,13 @@ export type SessionUser = {
   photoUrl: string | null;
   jobTitle: string | null;
   bio: string | null;
+  role: 'MEMBER' | 'ADMIN';
+  status: 'PENDING' | 'ACTIVE' | 'SUSPENDED';
   department: { id: string; name: string } | null;
 };
 
 /**
- * 自前sessionを取得して、userのデータを取得する関数
+ * Cognitoセッションからuserのデータを取得する関数
  * @returns
  */
 export const fetchGetSession = async () => {
@@ -27,7 +29,7 @@ export const fetchGetSession = async () => {
 };
 
 /**
- * 取得したcognitoTokenをBearに連結させて通信を行い、server側でcognitoTokenの検証をする関数
+ * Cognito Access TokenをServer用のHttpOnly Cookieへ保存する。
  * @param header
  * @returns
  */

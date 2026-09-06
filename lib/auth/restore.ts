@@ -2,7 +2,7 @@ import { fetchPostCreateSession } from '@/app/api/auth/session/fetch';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
 /**
- * cognitoのtokenと自前のtokenを同期させる関数
+ * Amplifyが更新したCognito TokenをHttpOnly Cookieへ同期させる関数。
  * @returns -boolean
  */
 export const restoreAppSession = async () => {
@@ -10,9 +10,10 @@ export const restoreAppSession = async () => {
   const authSession = await fetchAuthSession();
   const accessToken = authSession.tokens?.accessToken?.toString();
 
-  if (!accessToken) return false;
+  if (!accessToken) return null;
 
-  const message = await fetchPostCreateSession('Bearer ' + accessToken);
-  console.log('message', message);
-  return true;
+  await fetchPostCreateSession('Bearer ' + accessToken);
+  return typeof authSession.tokens?.accessToken.payload.exp === 'number'
+    ? authSession.tokens.accessToken.payload.exp
+    : null;
 };

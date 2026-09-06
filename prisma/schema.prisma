@@ -16,6 +16,16 @@ enum UserRole {
   ADMIN
 }
 
+// Cognitoで本人確認されたユーザーが、このアプリを利用できる状態かを管理する。
+enum UserStatus {
+  // 管理者による利用承認を待っている。
+  PENDING
+  // アプリの利用が許可されている。
+  ACTIVE
+  // 管理者によってアプリの利用を停止されている。
+  SUSPENDED
+}
+
 // 技術記事と、それ以外の業務ノウハウを検索・表示時に分ける。
 enum PostCategory {
   TECH
@@ -41,28 +51,51 @@ enum PostVisibility {
   PRIVATE
 }
 
+// 管理者が実行した重要操作の種類。監査ログを文字列の自由入力にせず集計しやすくする。
+enum AdminAuditAction {
+  MFA_TOTP_RESET
+  USER_ROLE_CHANGED
+  USER_STATUS_CHANGED
+  USER_SESSION_REVOKED
+  DEPARTMENT_CREATED
+  DEPARTMENT_RENAMED
+  DEPARTMENT_DELETED
+}
+
+// 外部サービスを伴う管理者操作の実行結果。
+enum AdminAuditStatus {
+  // Cognitoへ操作を送る前に記録した状態。
+  PENDING
+  // Cognito側の操作まで完了した状態。
+  SUCCEEDED
+  // Cognito側の操作に失敗した状態。
+  FAILED
+}
+
 // Cognitoユーザーと1対1で対応するアプリ利用者。
 // idにはCognito Access Tokenのsubを保存し、認証ユーザーを一意に結び付ける。
 model User {
   /// Cognitoが発行するユーザー固有のsub。
-  id             String      @id
+  id             String         @id
   /// ログインと社内連絡先に使うメールアドレス。
-  email          String      @unique
+  email          String         @unique
   /// 画面に表示するユーザー名。
   name           String
   /// S3に保存したプロフィール画像を識別するobjectKey。表示用URLはAPIで都度発行する。
   /// 既存DBのphotoUrl列を維持しつつ、アプリ内では役割が分かる名前で扱う。
-  photoObjectKey String?     @map("photoUrl")
+  photoObjectKey String?        @map("photoUrl")
   /// 役職や担当職種。
   jobTitle       String?
   /// 得意分野や担当業務を記載する自己紹介文。
   bio            String?
   /// アプリ内の操作権限。通常ユーザーはMEMBER。
-  role           UserRole    @default(MEMBER)
+  role           UserRole       @default(MEMBER)
+  /// アプリの利用状態。通常は利用可能で作成し、管理者が必要に応じて変更する。
+  status         UserStatus     @default(ACTIVE)
   /// 所属部署を参照する外部キー。未設定も許可する。
   departmentId   String?
   /// departmentIdに対応する所属部署。
-  department     Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  department     Department?    @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   /// このユーザーが投稿した記事。
   posts          Post[]
   /// このユーザーが投稿したコメント。
@@ -71,12 +104,19 @@ model User {
   postLikes      PostLike[]
   /// このユーザーが保存したブックマーク。
   bookmarks      Bookmark[]
+  /// このユーザーがお気に入り登録したメンバー。
+  favoriteUsers  UserFavorite[] @relation("FavoriteUserFollower")
+  /// このユーザーをお気に入り登録しているメンバー。
+  favoritedBy    UserFavorite[] @relation("FavoriteUserTarget")
+  /// お気に入りユーザーの新着記事など、このユーザーへ届いたアプリ内通知。
+  notifications  Notification[]
   /// ユーザー情報をDBへ登録した日時。
-  createdAt      DateTime    @default(now())
+  createdAt      DateTime       @default(now())
   /// ユーザー情報を最後に更新した日時。
-  updatedAt      DateTime    @updatedAt
+  updatedAt      DateTime       @updatedAt
 
   @@index([departmentId])
+  @@index([status])
 }
 
 // 投稿者の所属を表示し、メンバー・記事を部署単位で検索するためのマスタ。
@@ -97,39 +137,41 @@ model Department {
 // publishedAtは公開順、viewCountは人気記事の集計に利用する。
 model Post {
   /// 記事を識別するUUID。
-  id          String         @id @default(uuid())
+  id            String         @id @default(uuid())
   /// 一覧と詳細画面に表示する記事タイトル。
-  title       String
+  title         String
   /// 記事一覧や検索結果に表示する短い概要。
-  excerpt     String?
+  excerpt       String?
   /// Markdown形式で保存する記事本文。
-  content     String
+  content       String
   /// 技術記事か業務記事かを表す分類。
-  category    PostCategory   @default(TECH)
+  category      PostCategory   @default(TECH)
   /// 下書き・公開・アーカイブの公開状態。
-  status      PostStatus     @default(DRAFT)
+  status        PostStatus     @default(DRAFT)
   /// 公開済み記事を閲覧できる範囲。
-  visibility  PostVisibility @default(ORGANIZATION)
+  visibility    PostVisibility @default(ORGANIZATION)
   /// 人気記事の算出に利用する閲覧回数。
-  viewCount   Int            @default(0)
+  viewCount     Int            @default(0)
   /// 記事を公開した日時。下書きではnull。
-  publishedAt DateTime?
+  publishedAt   DateTime?
   /// 投稿者を参照する外部キー。
-  authorId    String
+  authorId      String
   /// authorIdに対応する投稿者。
-  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   /// 記事に投稿されたコメント。
-  comments    Comment[]
+  comments      Comment[]
   /// 記事に付けられたいいね。
-  likes       PostLike[]
+  likes         PostLike[]
   /// 記事を保存したユーザーのブックマーク。
-  bookmarks   Bookmark[]
+  bookmarks     Bookmark[]
+  /// この記事の公開を知らせるアプリ内通知。
+  notifications Notification[]
   /// 記事に設定されたタグとの関連。
-  postTags    PostTag[]
+  postTags      PostTag[]
   /// 記事を作成した日時。
-  createdAt   DateTime       @default(now())
+  createdAt     DateTime       @default(now())
   /// 記事を最後に更新した日時。
-  updatedAt   DateTime       @updatedAt
+  updatedAt     DateTime       @updatedAt
 
   @@index([authorId, createdAt])
   @@index([status, category, publishedAt])
@@ -231,4 +273,65 @@ model Bookmark {
 
   @@id([userId, postId])
   @@index([postId])
+}
+
+// 記事ブックマークとは独立して、通知を受け取りたいメンバーを保存する。
+model UserFavorite {
+  /// お気に入り登録を行ったユーザー。
+  followerId     String
+  /// お気に入り登録されたユーザー。
+  favoriteUserId String
+  follower       User     @relation("FavoriteUserFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  favoriteUser   User     @relation("FavoriteUserTarget", fields: [favoriteUserId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@id([followerId, favoriteUserId])
+  @@index([favoriteUserId, createdAt])
+}
+
+// お気に入り登録したメンバーが記事を初回公開した時に作成するアプリ内通知。
+model Notification {
+  /// 通知を識別するUUID。
+  id          String    @id @default(uuid())
+  /// 通知を受け取るユーザー。
+  recipientId String
+  /// 新着通知の対象記事。
+  postId      String
+  recipient   User      @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  /// 未読の場合はnull、ベルまたは記事から確認した日時を保持する。
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  // 再公開やリトライが発生しても、同じ記事を同じユーザーへ二重通知しない。
+  @@unique([recipientId, postId])
+  @@index([recipientId, readAt, createdAt])
+  @@index([postId])
+}
+
+// MFA救済など、後から実行者・対象・理由・結果を追跡する必要がある管理者操作の記録。
+// Userとの外部キーは設定せず、ユーザー削除後もCognito subを監査記録として残す。
+model AdminAuditLog {
+  /// 監査ログを識別するUUID。
+  id           String           @id @default(uuid())
+  /// 実行した管理者操作の種類。
+  action       AdminAuditAction
+  /// 操作の実行状況。
+  status       AdminAuditStatus @default(PENDING)
+  /// 操作を実行した管理者のCognito sub。
+  adminUserId  String
+  /// 操作対象ユーザーのCognito sub。
+  targetUserId String
+  /// 本人確認後に管理者が入力した対応理由。
+  reason       String
+  /// 失敗時の調査に使うサーバー側エラー概要。成功時はnull。
+  errorMessage String?
+  /// 管理者が操作を開始した日時。
+  createdAt    DateTime         @default(now())
+  /// Cognito側の成否が確定した日時。処理中はnull。
+  completedAt  DateTime?
+
+  @@index([adminUserId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([action, status, createdAt])
 }
