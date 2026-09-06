@@ -13,7 +13,7 @@ export type SessionUser = {
 };
 
 /**
- * 自前sessionを取得して、userのデータを取得する関数
+ * Cognitoセッションからuserのデータを取得する関数
  * @returns
  */
 export const fetchGetSession = async () => {
@@ -29,7 +29,7 @@ export const fetchGetSession = async () => {
 };
 
 /**
- * 取得したcognitoTokenをBearに連結させて通信を行い、自前sessionの発行
+ * Cognito Access TokenをServer用のHttpOnly Cookieへ保存する。
  * @param header
  * @returns
  */

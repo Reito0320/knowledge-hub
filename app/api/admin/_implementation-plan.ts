@@ -8,9 +8,10 @@
  * ユーザー一覧・検索                           管理画面のServer Componentで実装済み
  * app/api/admin/users/[userId]/role/route.ts   管理者権限の付与・解除（実装済み）
  * app/api/admin/users/[userId]/status/route.ts 承認・利用停止・再開（実装済み）
- * app/api/admin/users/[userId]/mfa/route.ts    CognitoのTOTP登録解除
- * app/api/admin/users/[userId]/session/route.ts 全端末のセッション失効
- * app/api/admin/audit-logs/route.ts            管理操作履歴の取得
+ * app/api/admin/users/[userId]/mfa-recovery/route.ts CognitoのTOTP登録解除（実装済み）
+ * app/api/admin/users/[userId]/session/route.ts 全端末のセッション失効（実装済み）
+ * 操作履歴は管理画面のServer Componentで実装済み
+ * app/api/admin/departments/*                  部署マスタ管理（実装済み）
  *
  * 実装する順番
  *
@@ -24,12 +25,11 @@
  * - 成功・失敗のtoast通知
  * - 権限変更APIのVitest
  *
- * 今後の手順
+ * 追加実装済み
  *
- * 1. AdminAuditLogを定義し、「誰が・誰に・何をしたか」を保存する。
- * 2. 管理操作履歴を管理画面へ表示する。
- * 3. MFA解除などのCognito操作はAWS SDKをサーバー側だけで実行する。
- * 4. 監査ログ・Cognito操作をVitestでテストする。
+ * - 管理操作履歴の表示・絞り込み
+ * - Cognito TOTP救済と全端末セッション失効
+ * - 部署マスタの追加・名称変更・安全な削除
  *
  * セキュリティ上の注意
  *

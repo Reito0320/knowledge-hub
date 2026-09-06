@@ -22,6 +22,7 @@ export type PostListItem = {
   viewCount: number;
   publishedAt: string | null;
   updatedAt: string;
+  author: { name: string; photoUrl: string | null };
   postTags: Array<{
     tag: {
       id: string;

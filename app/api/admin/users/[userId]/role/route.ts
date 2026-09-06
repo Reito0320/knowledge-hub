@@ -1,6 +1,7 @@
 import { getCurrentAdmin } from '@/lib/auth/get-current-admin';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { writeAdminAuditLog } from '@/lib/admin/write-admin-audit-log';
 
 class AdminRoleUpdateError extends Error {
   constructor(
@@ -97,6 +98,13 @@ export const PATCH = async (
       },
       { isolationLevel: 'Serializable' },
     );
+
+    await writeAdminAuditLog({
+      action: 'USER_ROLE_CHANGED',
+      adminUserId: currentAdmin.id,
+      targetUserId: userId,
+      reason: `権限を${role}へ変更`,
+    });
 
     return NextResponse.json({
       message: 'ユーザーの権限を変更しました。',

@@ -2,7 +2,7 @@
 //         ↓
 // POST /api/auth/sessionを直接呼ぶ
 //         ↓
-// Cognito・Prisma・Sessionは偽物に差し替える
+// Cognito・Prisma・Cookieは偽物に差し替える
 //         ↓
 // 返ってきたStatusや、呼ばれた関数を確認する
 
@@ -11,14 +11,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* 最初にmocksを定義しておくことで、vi.mockの中でのホイスティングによる変数errorをなくせる。 */
 const mocks = vi.hoisted(() => ({
-  verifyToken: vi.fn(),
+  verifyActiveToken: vi.fn(),
   findUniqueUser: vi.fn(),
-  createSession: vi.fn(),
+  setCookie: vi.fn(),
   deleteCookie: vi.fn(),
-}));
-
-vi.mock('@/lib/AWS/cognito-verify-access-token', () => ({
-  verifyCognitoAccessToken: mocks.verifyToken,
+  getVerifiedCognitoSession: vi.fn(),
 }));
 
 vi.mock('@/lib/AWS/s3-presigned-url', () => ({
@@ -33,12 +30,15 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-vi.mock('@/lib/session', () => ({
-  createSession: mocks.createSession,
+vi.mock('@/lib/auth/cognito-session', () => ({
+  COGNITO_ACCESS_TOKEN_COOKIE: 'cognito_access_token',
+  getVerifiedCognitoSession: mocks.getVerifiedCognitoSession,
+  verifyActiveCognitoAccessToken: mocks.verifyActiveToken,
 }));
 
 vi.mock('@/lib/cookie', () => ({
   deleteCookie: mocks.deleteCookie,
+  setCookie: mocks.setCookie,
 }));
 
 import { POST } from '@/app/api/auth/session/route';
@@ -47,8 +47,13 @@ describe('POST /api/auth/session', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.verifyToken.mockResolvedValue({
-      sub: 'cognito-sub-123',
+    mocks.verifyActiveToken.mockResolvedValue({
+      payload: {
+        sub: 'cognito-sub-123',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      cognitoUser: { sub: 'cognito-sub-123' },
+      accessToken: 'test-access-token',
     });
 
     mocks.findUniqueUser.mockResolvedValue({
@@ -56,7 +61,7 @@ describe('POST /api/auth/session', () => {
       status: 'ACTIVE',
     });
 
-    mocks.createSession.mockResolvedValue(undefined);
+    mocks.setCookie.mockResolvedValue(undefined);
   });
 
   it('Authorization Headerがなければ401を返す', async () => {
@@ -74,7 +79,7 @@ describe('POST /api/auth/session', () => {
     expect(mocks.findUniqueUser).not.toHaveBeenCalled();
   });
 
-  it('認証成功時にDBのUserを確認してSessionを作る', async () => {
+  it('認証成功時にCognito Access TokenをCookieへ保存する', async () => {
     const request = new NextRequest('http://localhost/api/auth/session', {
       method: 'POST',
       headers: {
@@ -88,12 +93,16 @@ describe('POST /api/auth/session', () => {
     expect(response.status).toBe(200);
     expect(body.message).toBe('ログインしました。');
 
-    expect(mocks.verifyToken).toHaveBeenCalledWith('test-access-token');
+    expect(mocks.verifyActiveToken).toHaveBeenCalledWith('test-access-token');
     expect(mocks.findUniqueUser).toHaveBeenCalledWith({
       where: { id: 'cognito-sub-123' },
       select: { id: true, status: true },
     });
-    expect(mocks.createSession).toHaveBeenCalledWith('cognito-sub-123');
+    expect(mocks.setCookie).toHaveBeenCalledWith(
+      'cognito_access_token',
+      'test-access-token',
+      expect.any(Number),
+    );
   });
 
   it('DBにUserが存在しなければ403を返す', async () => {
@@ -110,7 +119,21 @@ describe('POST /api/auth/session', () => {
 
     expect(response.status).toBe(403);
     expect(mocks.findUniqueUser).toHaveBeenCalledOnce();
-    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(mocks.setCookie).not.toHaveBeenCalled();
+  });
+
+  it('Cognitoで失効済みのTokenをCookieへ保存しない', async () => {
+    mocks.verifyActiveToken.mockResolvedValue(null);
+
+    const request = new NextRequest('http://localhost/api/auth/session', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer revoked-token' },
+    });
+    const response = await POST(request);
+
+    expect(response.status).toBe(401);
+    expect(mocks.findUniqueUser).not.toHaveBeenCalled();
+    expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 
   it('承認待ちユーザーにはSessionを作らない', async () => {
@@ -129,7 +152,7 @@ describe('POST /api/auth/session', () => {
 
     expect(response.status).toBe(403);
     expect(body.message).toBe('管理者の承認待ちです。');
-    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 
   it('利用停止中のユーザーにはSessionを作らない', async () => {
@@ -146,6 +169,6 @@ describe('POST /api/auth/session', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(403);
-    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(mocks.setCookie).not.toHaveBeenCalled();
   });
 });

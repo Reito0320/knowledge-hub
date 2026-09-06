@@ -5,6 +5,11 @@ const mocks = vi.hoisted(() => ({
   getCurrentAdmin: vi.fn(),
   findUniqueUser: vi.fn(),
   updateUser: vi.fn(),
+  adminSetUserEnabled: vi.fn(),
+}));
+
+vi.mock('@/lib/AWS/admin-set-user-enabled', () => ({
+  adminSetUserEnabled: mocks.adminSetUserEnabled,
 }));
 
 vi.mock('@/lib/auth/get-current-admin', () => ({
@@ -37,8 +42,12 @@ describe('PATCH /api/admin/users/[userId]/status', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getCurrentAdmin.mockResolvedValue({ id: 'admin-1' });
-    mocks.findUniqueUser.mockResolvedValue({ id: 'user-2' });
+    mocks.findUniqueUser.mockResolvedValue({
+      id: 'user-2',
+      status: 'PENDING',
+    });
     mocks.updateUser.mockResolvedValue({ id: 'user-2', status: 'ACTIVE' });
+    mocks.adminSetUserEnabled.mockResolvedValue(undefined);
   });
 
   it('管理者でなければ403を返す', async () => {
@@ -66,11 +75,35 @@ describe('PATCH /api/admin/users/[userId]/status', () => {
 
     expect(response.status).toBe(200);
     expect(body.user).toEqual({ id: 'user-2', status: 'ACTIVE' });
+    expect(mocks.adminSetUserEnabled).toHaveBeenCalledWith('user-2', true);
     expect(mocks.updateUser).toHaveBeenCalledWith({
       where: { id: 'user-2' },
       data: { status: 'ACTIVE' },
       select: { id: true, status: true },
     });
+  });
+
+  it('退職者はCognitoで無効化し、DBにはSUSPENDEDとして残す', async () => {
+    mocks.updateUser.mockResolvedValue({ id: 'user-2', status: 'SUSPENDED' });
+
+    const response = await PATCH(createRequest('SUSPENDED'), createContext());
+
+    expect(response.status).toBe(200);
+    expect(mocks.adminSetUserEnabled).toHaveBeenCalledWith('user-2', false);
+    expect(mocks.updateUser).toHaveBeenCalledWith({
+      where: { id: 'user-2' },
+      data: { status: 'SUSPENDED' },
+      select: { id: true, status: true },
+    });
+  });
+
+  it('Cognitoの無効化に失敗した場合はDBを変更しない', async () => {
+    mocks.adminSetUserEnabled.mockRejectedValue(new Error('AWS failed'));
+
+    const response = await PATCH(createRequest('SUSPENDED'), createContext());
+
+    expect(response.status).toBe(500);
+    expect(mocks.updateUser).not.toHaveBeenCalled();
   });
 
   it('定義されていない状態は400を返す', async () => {

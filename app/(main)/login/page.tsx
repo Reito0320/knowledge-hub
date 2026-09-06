@@ -44,7 +44,7 @@ const LoginPage = () => {
   };
 
   /**
-   * Cognitoへログインし、取得したAccess Tokenからアプリ独自のSessionを作成する。
+   * Cognitoへログインし、Access TokenをServer用Cookieへ同期する。
    */
   const handleLogin = async (
     event: React.SubmitEvent<HTMLFormElement>,

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { FiHeart, FiMessageCircle } from 'react-icons/fi';
 import type { HomePost } from '@/lib/home/get-home-data';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
+import UserAvatar from '@/comp/UserAvatar';
 
 type ThirdSectionProps = {
   latestArticles: HomePost[];
@@ -99,9 +100,11 @@ const ThirdSection = ({ latestArticles }: ThirdSectionProps) => {
                   <Link href={`/post/${article.id}`}>{article.title}</Link>
                 </h3>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#7B8899]">
-                  <span className="flex size-7 items-center justify-center rounded-full bg-[#EDF1F5] text-[10px] font-bold text-[#516176]">
-                    {article.author.name.trim().slice(0, 1) || 'U'}
-                  </span>
+                  <UserAvatar
+                    name={article.author.name}
+                    photoUrl={article.author.photoUrl}
+                    size={28}
+                  />
                   <span className="font-semibold text-[#566477]">
                     {article.author.name}
                   </span>

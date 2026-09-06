@@ -9,6 +9,8 @@ import 'server-only';
 
 export const PROFILE_IMAGE_UPLOAD_URL_EXPIRES_IN = 60;
 export const PROFILE_IMAGE_VIEW_URL_EXPIRES_IN = 60 * 60;
+export const POST_IMAGE_UPLOAD_URL_EXPIRES_IN = 60;
+export const POST_IMAGE_VIEW_URL_EXPIRES_IN = 5 * 60;
 
 /** プロフィール画像をS3へPUTするための署名付きURLを発行する。 */
 export const createProfileImageUploadUrl = async (
@@ -38,6 +40,37 @@ export const createProfileImageViewUrl = async (objectKey: string) => {
 
   return getSignedUrl(getS3Client(), command, {
     expiresIn: PROFILE_IMAGE_VIEW_URL_EXPIRES_IN,
+  });
+};
+
+/** 記事画像をS3へPUTするための署名付きURLを発行する。 */
+export const createPostImageUploadUrl = async (
+  objectKey: string,
+  contentType: string,
+  userId: string,
+) => {
+  const command = new PutObjectCommand({
+    Bucket: getS3BucketName(),
+    Key: objectKey,
+    ContentType: contentType,
+    Metadata: { ownerId: userId, usage: 'post-content' },
+  });
+
+  return getSignedUrl(getS3Client(), command, {
+    expiresIn: POST_IMAGE_UPLOAD_URL_EXPIRES_IN,
+    signableHeaders: new Set(['content-type']),
+  });
+};
+
+/** 認可済みの記事画像を表示する短時間の署名付きURLを発行する。 */
+export const createPostImageViewUrl = async (objectKey: string) => {
+  const command = new GetObjectCommand({
+    Bucket: getS3BucketName(),
+    Key: objectKey,
+  });
+
+  return getSignedUrl(getS3Client(), command, {
+    expiresIn: POST_IMAGE_VIEW_URL_EXPIRES_IN,
   });
 };
 
