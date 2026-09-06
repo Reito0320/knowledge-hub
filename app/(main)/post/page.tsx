@@ -24,6 +24,7 @@ import { useRouter } from 'next/navigation';
 import Skeleton from '@/comp/Skeleton';
 import { toast } from 'react-toastify';
 import { AnimatedList, AnimatedListItem } from '@/comp/AnimatedList';
+import UserAvatar from '@/comp/UserAvatar';
 
 const statusStyles = {
   DRAFT: {
@@ -217,6 +218,15 @@ const PostPage = () => {
                           {post.excerpt}
                         </p>
                       )}
+
+                      <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#66758A]">
+                        <UserAvatar
+                          name={post.author.name}
+                          photoUrl={post.author.photoUrl}
+                          size={28}
+                        />
+                        {post.author.name}
+                      </div>
 
                       {post.postTags.length > 0 && (
                         <div className="mt-4 flex flex-wrap gap-2">

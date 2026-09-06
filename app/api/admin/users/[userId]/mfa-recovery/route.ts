@@ -1,4 +1,5 @@
 import { adminDeleteSoftwareToken } from '@/lib/AWS/admin-delete-software-token';
+import { adminUserGlobalSignOut } from '@/lib/AWS/admin-user-global-sign-out';
 import { getCurrentAdmin } from '@/lib/auth/get-current-admin';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
@@ -146,6 +147,7 @@ export const POST = async (
 
     try {
       await adminDeleteSoftwareToken(targetUser.id);
+      await adminUserGlobalSignOut(targetUser.id);
     } catch (error) {
       const errorMessage = getErrorMessage(error).slice(0, 1000);
       await completeAuditLog(auditLog.id, 'FAILED', errorMessage);
@@ -180,14 +182,6 @@ export const POST = async (
     }
 
     await completeAuditLog(auditLog.id, 'SUCCEEDED');
-
-    /*
-     * TODO: 既存セッション失効は別工程で実装する。
-     * - Cognito: AdminUserGlobalSignOutCommandで対象ユーザーの既存トークンを無効化する。
-     * - 自前Session: SessionをDB管理するかsessionVersionをUserへ持たせ、
-     *   対象ユーザーの全Sessionをサーバー側から無効化できるようにする。
-     * ブラウザのCookie削除だけでは、別端末のSessionまでは無効化できない点に注意する。
-     */
 
     return NextResponse.json({
       message: 'MFAを再設定できる状態にしました。',

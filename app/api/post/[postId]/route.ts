@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { canViewPost, isPostVisibility } from '@/lib/post/post-visibility';
 import { createProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
+import { createNewPostNotifications } from '@/lib/notification/create-new-post-notifications';
 
 type RouteContext = {
   params: Promise<{
@@ -216,6 +217,7 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
       select: {
         id: true,
         publishedAt: true,
+        authorId: true,
       },
     });
 
@@ -227,27 +229,44 @@ export const PATCH = async (req: NextRequest, { params }: RouteContext) => {
 
     const postTagData = createPostTagData(tags);
 
-    await prisma.post.update({
-      where: {
-        id: targetPost.id,
-      },
-      data: {
-        title: title.trim(),
-        excerpt: typeof excerpt === 'string' ? excerpt.trim() || null : null,
-        content,
-        category,
-        visibility,
-        ...(shouldPublish
-          ? {
-              status: 'PUBLISHED' as const,
-              publishedAt: targetPost.publishedAt ?? new Date(),
-            }
-          : {}),
-        postTags: {
-          deleteMany: {},
-          create: postTagData,
+    await prisma.$transaction(async (tx) => {
+      const updatedPost = await tx.post.update({
+        where: {
+          id: targetPost.id,
         },
-      },
+        data: {
+          title: title.trim(),
+          excerpt: typeof excerpt === 'string' ? excerpt.trim() || null : null,
+          content,
+          category,
+          visibility,
+          ...(shouldPublish
+            ? {
+                status: 'PUBLISHED' as const,
+                publishedAt: targetPost.publishedAt ?? new Date(),
+              }
+            : {}),
+          postTags: {
+            deleteMany: {},
+            create: postTagData,
+          },
+        },
+        select: {
+          id: true,
+          authorId: true,
+          visibility: true,
+          author: { select: { departmentId: true } },
+        },
+      });
+
+      if (shouldPublish && targetPost.publishedAt === null) {
+        await createNewPostNotifications(tx, {
+          id: updatedPost.id,
+          authorId: updatedPost.authorId,
+          authorDepartmentId: updatedPost.author.departmentId,
+          visibility: updatedPost.visibility,
+        });
+      }
     });
 
     return NextResponse.json({

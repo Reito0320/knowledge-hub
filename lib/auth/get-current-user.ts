@@ -1,17 +1,16 @@
 import 'server-only';
-import { getCookie } from '../cookie';
-import { decrypt } from '../jwt';
 import { prisma } from '../prisma';
+import { getVerifiedCognitoSession } from './cognito-session';
 
 /**
- * 自前sessionが存在していたらpayloadを取得、その後payloadの情報からuserのデータを取得
+ * Cognito Access Tokenを検証し、subからアプリのUserを取得する。
  * @returns
  */
 export const getCurrentUser = async () => {
-  const session = await getCookie('session');
-  const payload = await decrypt(session);
-  if (!payload || typeof payload.userId !== 'string') return;
-  const id = payload.userId;
+  const session = await getVerifiedCognitoSession();
+  if (!session) return;
+
+  const id = session.payload.sub;
   const user = await prisma.user.findFirst({
     where: {
       id: id,

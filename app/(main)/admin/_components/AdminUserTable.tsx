@@ -4,6 +4,7 @@ import { FiSearch, FiX } from 'react-icons/fi';
 import AdminRoleControl from './AdminRoleControl';
 import AdminStatusControl from './AdminStatusControl';
 import AdminMfaRecoveryButton from './AdminMfaRecoveryButton';
+import AdminSessionRevokeButton from './AdminSessionRevokeButton';
 
 type AdminUserListItem = {
   id: string;
@@ -71,7 +72,7 @@ const AdminUserTable = ({ users, currentAdminId, keyword, selectedRole, selected
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1040px] border-collapse text-left">
           <thead className="bg-[#FAF7F3] text-xs font-bold uppercase tracking-[0.08em] text-[#857C74]">
-            <tr><th className="px-6 py-3.5">ユーザー</th><th className="px-4 py-3.5">部署</th><th className="px-4 py-3.5">権限</th><th className="px-4 py-3.5">利用状態</th><th className="px-4 py-3.5">MFA</th><th className="px-4 py-3.5">登録日</th></tr>
+            <tr><th className="px-6 py-3.5">ユーザー</th><th className="px-4 py-3.5">部署</th><th className="px-4 py-3.5">権限</th><th className="px-4 py-3.5">利用状態</th><th className="px-4 py-3.5">MFA</th><th className="px-4 py-3.5">セッション</th><th className="px-4 py-3.5">登録日</th></tr>
           </thead>
           <tbody className="divide-y divide-[#F0EAE4]">
             {users.map((user) => {
@@ -109,6 +110,9 @@ const AdminUserTable = ({ users, currentAdminId, keyword, selectedRole, selected
                     {user.role === 'ADMIN' && (
                       <span className="text-sm text-[#AAA099]">—</span>
                     )}
+                  </td>
+                  <td className="px-4 py-4">
+                    {isCurrentUser ? <span className="text-sm text-[#AAA099]">—</span> : <AdminSessionRevokeButton userId={user.id} userName={user.name} />}
                   </td>
                   <td className="px-4 py-4 text-sm text-[#817970]">{dateFormatter.format(user.createdAt)}</td>
                 </tr>

@@ -7,7 +7,6 @@ import { fetchAuthSession, signIn } from 'aws-amplify/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { FcGoogle } from 'react-icons/fc';
 import MfaSetupView from './_components/MfaSetupView';
 import MfaCodeView from './_components/MfaCodeView';
 
@@ -45,7 +44,7 @@ const LoginPage = () => {
   };
 
   /**
-   * Cognitoへログインし、取得したAccess Tokenからアプリ独自のSessionを作成する。
+   * Cognitoへログインし、Access TokenをServer用Cookieへ同期する。
    */
   const handleLogin = async (
     event: React.SubmitEvent<HTMLFormElement>,
@@ -269,20 +268,6 @@ const LoginPage = () => {
               新規登録
             </Link>
           </p>
-
-          <div className="my-6 flex items-center gap-3 text-xs text-[#8A8178]">
-            <span className="h-px flex-1 bg-[#DED4CA]" />
-            または
-            <span className="h-px flex-1 bg-[#DED4CA]" />
-          </div>
-
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-2.5 rounded-[10px] border border-[#DED4CA] bg-white py-2.5 text-[13.5px] font-semibold text-[#57534F] transition hover:border-[#C88A5B] hover:bg-[#FFF8F1]"
-          >
-            <FcGoogle className="size-5" />
-            Google Login
-          </button>
 
           <div className="mt-7 flex gap-2 rounded-[10px] bg-[#FCF7F2] p-3.5 text-xs text-[#756C64]">
             🛡️

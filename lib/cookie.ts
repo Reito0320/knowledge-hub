@@ -11,14 +11,18 @@ export const getCookie = async (key: string) => {
   }
 };
 
-export const setCookie = async (key: string, value: string) => {
+export const setCookie = async (
+  key: string,
+  value: string,
+  maxAge = 6 * 60 * 60,
+) => {
   try {
     const cookieStore = await cookies();
 
     cookieStore.set(key, value, {
       secure: true,
       sameSite: 'lax',
-      maxAge: 6 * 60 * 60, // 自前Session JWTと合わせて6時間
+      maxAge,
       httpOnly: true,
       path: '/',
     });

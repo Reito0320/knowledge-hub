@@ -23,6 +23,7 @@ export type SelectedTag =
 import MarkdownRenderer from '@/comp/MarkdownRender';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import { continueMarkdownList } from '@/lib/markdown/continue-list';
+import { uploadPostImage } from '@/app/api/post/images/fetch';
 import type { PostVisibility } from '@/lib/post/post-visibility';
 import { validatePostForPublish } from '@/lib/post/validate-post-for-publish';
 import VisibilitySelector from './_components/VisibilitySelector';
@@ -94,7 +95,10 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     initialData?.tags ?? [],
   );
   const [editorMode, setEditorMode] = useState<EditorMode>('edit');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const imageSelectionRef = useRef({ start: 0, end: 0, alt: '' });
   const lastDispatchedDraftRef = useRef(
     JSON.stringify({
       title: initialData?.title ?? '',
@@ -284,13 +288,8 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
         nextSelectionEnd = 1 + text.length;
         break;
       }
-      case 'image': {
-        const text = selectedText || '画像の説明';
-        replacement = `![${text}](https://example.com/image.png)`;
-        nextSelectionStart = 2;
-        nextSelectionEnd = 2 + text.length;
-        break;
-      }
+      case 'image':
+        return;
       case 'code': {
         const text = selectedText || 'コード';
         const isBlockCode = selectedText.includes('\n');
@@ -315,6 +314,58 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
         selectionStart + nextSelectionEnd,
       );
     });
+  };
+
+  const selectPostImage = () => {
+    const textarea = contentTextareaRef.current;
+    if (!textarea || isUploadingImage) return;
+
+    imageSelectionRef.current = {
+      start: textarea.selectionStart,
+      end: textarea.selectionEnd,
+      alt: content.slice(textarea.selectionStart, textarea.selectionEnd),
+    };
+    imageFileInputRef.current?.click();
+  };
+
+  const handlePostImageChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+      const markdownUrl = await uploadPostImage(file);
+      const { start, end, alt: selectedAlt } = imageSelectionRef.current;
+      const fallbackAlt = file.name.replace(/\.[^.]+$/, '') || '記事画像';
+      const alt = (selectedAlt || fallbackAlt)
+        .replace(/[\[\]\r\n]/g, ' ')
+        .trim();
+      const markdown = `![${alt}](${markdownUrl})`;
+
+      setContent((current) =>
+        current.slice(0, start) + markdown + current.slice(end),
+      );
+
+      window.requestAnimationFrame(() => {
+        const textarea = contentTextareaRef.current;
+        if (!textarea) return;
+        const cursor = start + markdown.length;
+        textarea.focus();
+        textarea.setSelectionRange(cursor, cursor);
+      });
+    } catch (error) {
+      console.error('記事画像のアップロードに失敗しました:', error);
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : '記事画像をアップロードできませんでした。',
+      );
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const applyTextColor = (color: MarkdownTextColor) => {
@@ -454,15 +505,25 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
 
         {editorMode === 'edit' && (
           <div className="flex flex-wrap items-center gap-1 border-b border-[#E8EDF2] px-4 py-2.5 sm:px-6">
+            <input
+              ref={imageFileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handlePostImageChange}
+              className="sr-only"
+            />
             {editorTools.map(({ label, icon: Icon, tool }) => (
               <motion.button
                 key={label}
                 type="button"
                 title={label}
                 aria-label={`${label}のMarkdownを挿入`}
-                onClick={() => applyMarkdown(tool)}
+                onClick={() =>
+                  tool === 'image' ? selectPostImage() : applyMarkdown(tool)
+                }
+                disabled={tool === 'image' && isUploadingImage}
                 whileTap={{ scale: 0.92 }}
-                className="flex size-9 items-center justify-center rounded-lg text-[#716961] transition hover:bg-[#FFF0E2] hover:text-[#A66334] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A66334]"
+                className="flex size-9 items-center justify-center rounded-lg text-[#716961] transition hover:bg-[#FFF0E2] hover:text-[#A66334] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A66334] disabled:cursor-wait disabled:opacity-50"
               >
                 <Icon aria-hidden="true" />
               </motion.button>

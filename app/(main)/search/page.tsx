@@ -17,7 +17,9 @@ import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import { createOptionalProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
 import { AnimatedList, AnimatedListItem } from '@/comp/AnimatedList';
 import MemberSearchControls from './_components/MemberSearchControls';
+import FavoriteUserButton from './_components/FavoriteUserButton';
 import Image from 'next/image';
+import UserAvatar from '@/comp/UserAvatar';
 
 type SearchParamValue = string | string[] | undefined;
 
@@ -76,6 +78,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
   const memberRecords = isMemberDirectory
     ? await prisma.user.findMany({
         where: {
+          status: 'ACTIVE',
           // 検索結果にもログイン中の本人を含めない。
           id: memberId
             ? {
@@ -107,6 +110,11 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
             select: {
               name: true,
             },
+          },
+          favoritedBy: {
+            where: { followerId: currentUserId },
+            select: { followerId: true },
+            take: 1,
           },
           posts: {
             where: {
@@ -234,7 +242,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
                           initials
                         )}
                       </span>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <h2 className="text-lg font-bold text-[#1E3A5F]">
                           {targetMember.name}
                         </h2>
@@ -262,6 +270,11 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
                           </p>
                         )}
                       </div>
+                      <FavoriteUserButton
+                        userId={targetMember.id}
+                        userName={targetMember.name}
+                        initialFavorited={targetMember.favoritedBy.length > 0}
+                      />
                     </div>
                   </header>
 
@@ -273,6 +286,14 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
                     <div className="divide-y divide-[#EEF1F4]">
                       {targetMember.posts.map((post) => (
                         <article key={post.id} className="p-5 sm:p-6">
+                          <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-[#66758A]">
+                            <UserAvatar
+                              name={targetMember.name}
+                              photoUrl={targetMember.photoUrl}
+                              size={28}
+                            />
+                            {targetMember.name}
+                          </div>
                           <div className="flex flex-wrap items-center gap-2 text-xs">
                             <span className="rounded-full bg-[#E8F0FA] px-2.5 py-1 font-bold text-[#254F8F]">
                               {categoryLabels[post.category]}

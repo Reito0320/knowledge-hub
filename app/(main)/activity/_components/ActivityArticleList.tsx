@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { FiArrowUpRight, FiMessageCircle, FiHeart } from 'react-icons/fi';
+import UserAvatar from '@/comp/UserAvatar';
 
 export type ActivityArticle = {
   postId: string;
@@ -7,6 +8,7 @@ export type ActivityArticle = {
   excerpt: string | null;
   occurredAt: Date;
   note?: string;
+  author: { name: string; photoUrl: string | null };
 };
 
 type Props = {
@@ -32,10 +34,18 @@ const ActivityArticleList = ({ title, description, type, articles }: Props) => {
           {articles.map((article) => (
             <li key={`${type}-${article.postId}`}>
               <Link href={`/post/${article.postId}`} className="group flex items-start justify-between gap-4 py-4">
-                <div className="min-w-0">
+                <div className="flex min-w-0 gap-3">
+                  <UserAvatar
+                    name={article.author.name}
+                    photoUrl={article.author.photoUrl}
+                    size={32}
+                  />
+                  <div className="min-w-0">
                   <h3 className="truncate text-sm font-bold text-[#4C5159] group-hover:text-[#A66334]">{article.title}</h3>
+                  <p className="mt-0.5 text-[11px] font-semibold text-[#80766E]">{article.author.name}</p>
                   <p className="mt-1 line-clamp-1 text-xs text-[#887B70]">{article.note ?? article.excerpt ?? '概要はありません'}</p>
                   <time className="mt-2 block text-[11px] text-[#A0958C]">{article.occurredAt.toLocaleDateString('ja-JP')}</time>
+                  </div>
                 </div>
                 <FiArrowUpRight aria-hidden="true" className="mt-1 shrink-0 text-[#A66334]" />
               </Link>

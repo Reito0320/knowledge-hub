@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   createAuditLog: vi.fn(),
   updateAuditLog: vi.fn(),
   adminDeleteSoftwareToken: vi.fn(),
+  adminUserGlobalSignOut: vi.fn(),
 }));
 
 vi.mock('@/lib/auth/get-current-admin', () => ({
@@ -15,6 +16,10 @@ vi.mock('@/lib/auth/get-current-admin', () => ({
 
 vi.mock('@/lib/AWS/admin-delete-software-token', () => ({
   adminDeleteSoftwareToken: mocks.adminDeleteSoftwareToken,
+}));
+
+vi.mock('@/lib/AWS/admin-user-global-sign-out', () => ({
+  adminUserGlobalSignOut: mocks.adminUserGlobalSignOut,
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -55,6 +60,7 @@ describe('POST /api/admin/users/[userId]/mfa-recovery', () => {
     mocks.createAuditLog.mockResolvedValue({ id: 'audit-1' });
     mocks.updateAuditLog.mockResolvedValue({ id: 'audit-1' });
     mocks.adminDeleteSoftwareToken.mockResolvedValue(undefined);
+    mocks.adminUserGlobalSignOut.mockResolvedValue(undefined);
   });
 
   it('管理者でなければ403を返す', async () => {
@@ -97,6 +103,7 @@ describe('POST /api/admin/users/[userId]/mfa-recovery', () => {
       select: { id: true },
     });
     expect(mocks.adminDeleteSoftwareToken).toHaveBeenCalledWith('member-1');
+    expect(mocks.adminUserGlobalSignOut).toHaveBeenCalledWith('member-1');
     expect(mocks.updateAuditLog).toHaveBeenCalledWith({
       where: { id: 'audit-1' },
       data: {
