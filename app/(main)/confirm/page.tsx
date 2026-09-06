@@ -41,7 +41,6 @@ const ConfirmForm = () => {
     } finally {
       setIsConfirming(false);
     }
-    router.push('/login');
   };
 
   const handleResend = async () => {
