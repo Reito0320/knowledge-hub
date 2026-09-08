@@ -51,7 +51,13 @@ npm ci
 
 ### 2. 環境変数の設定
 
-プロジェクト直下に`.env`を作成します。以下はダミー値です。
+`.env.example`をコピーして、プロジェクト直下に`.env`を作成します。
+
+```bash
+cp .env.example .env
+```
+
+以下のダミー値を自分の環境の値に置き換えてください。
 
 ```dotenv
 DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/knowledge_hub"
@@ -74,7 +80,9 @@ ADMIN_ACCOUNT_EMAIL="admin@example.com"
 
 `ADMIN_ACCOUNT_EMAIL`は対象ユーザーの初回登録前に設定します。既存ユーザーの権限は、この値を変更しても自動では更新されません。通常ユーザーは`MEMBER`・`ACTIVE`で作成され、現在は初回利用時の管理者承認を必須にしていません。
 
-`.env`はGit管理対象外です。`NEXT_PUBLIC_`付きの値はブラウザに公開されるため、AWSの秘密鍵などは設定しないでください。
+`.env`と`.env.*`はGit管理対象外です（ダミー値だけを含む`.env.example`・`.env.sample`を除く）。`NEXT_PUBLIC_`付きの値はブラウザに公開されるため、AWSの秘密鍵などは設定しないでください。
+
+プロフィール画像の許可ホストは`S3_BUCKET_NAME`と`S3_REGION`から生成します。画像機能を使う場合はビルド時にも両方を設定し、変更後は開発サーバーの再起動、または本番の再ビルド・再デプロイを行ってください。未設定の場合、S3の画像ホストは許可されません。
 
 ### 3. データベースの準備
 
