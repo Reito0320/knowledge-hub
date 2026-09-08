@@ -1,5 +1,8 @@
 import type { NextConfig } from 'next';
 
+const s3BucketName = process.env.S3_BUCKET_NAME;
+const s3Region = process.env.S3_REGION;
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -7,13 +10,16 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
       },
-      {
-        protocol: 'https',
-        hostname:
-          'knowledge-hub-s3-810626480458-ap-northeast-1-an.s3.ap-northeast-1.amazonaws.com',
-        port: '',
-        pathname: '/profile-images/**',
-      },
+      ...(s3BucketName && s3Region
+        ? [
+            {
+              protocol: 'https' as const,
+              hostname: `${s3BucketName}.s3.${s3Region}.amazonaws.com`,
+              port: '',
+              pathname: '/profile-images/**',
+            },
+          ]
+        : []),
     ],
   },
 };
