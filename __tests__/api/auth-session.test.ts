@@ -101,8 +101,19 @@ describe('POST /api/auth/session', () => {
     expect(mocks.setCookie).toHaveBeenCalledWith(
       'cognito_access_token',
       'test-access-token',
-      expect.any(Number),
+      null,
     );
+  });
+
+  it('保持を選んだ場合もCookieの期限をJWTの期限内にする', async () => {
+    const response = await POST(new NextRequest('http://localhost/api/auth/session', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-access-token', 'X-Remember-Me': 'true' },
+    }));
+    expect(response.status).toBe(200);
+    const maxAge = mocks.setCookie.mock.calls[0][2];
+    expect(maxAge).toBeGreaterThan(3590);
+    expect(maxAge).toBeLessThanOrEqual(3600);
   });
 
   it('DBにUserが存在しなければ403を返す', async () => {

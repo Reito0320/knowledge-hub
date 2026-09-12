@@ -2,6 +2,7 @@
 
 import { fetchPostCreateSession } from '@/app/api/auth/session/fetch';
 import { fetchPostCreateUser } from '@/app/api/users/provision/fetch';
+import { setLoginRemembered } from '@/lib/auth/remember-me';
 import { notifyAuthSessionChanged } from '@/lib/auth/auth-session-event';
 import { fetchAuthSession, signIn } from 'aws-amplify/auth';
 import Link from 'next/link';
@@ -17,6 +18,7 @@ const LoginPage = () => {
   const [loginStep, setLoginStep] = useState<LoginStep>('LOGIN');
   const [setupUri, setSetupUri] = useState('');
   const [sharedSecret, setSharedSecret] = useState('');
+  const [remember, setRemember] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   /**
@@ -66,6 +68,7 @@ const LoginPage = () => {
     const username = formData.get('email') as string;
     const password = formData.get('password') as string;
 
+    setLoginRemembered(remember);
     const authSession = await fetchAuthSession();
     const accessToken = authSession.tokens?.accessToken?.toString();
 
@@ -266,8 +269,8 @@ const LoginPage = () => {
               <label className="flex items-center gap-1.5 text-[#7B8899]">
                 <input
                   type="checkbox"
-                  // checked={remember}
-                  // onChange={(e) => setRemember(e.target.checked)}
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
                   className="accent-[#A66334]"
                 />
                 ログイン状態を保持

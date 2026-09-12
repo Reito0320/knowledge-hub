@@ -82,7 +82,7 @@ const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
           </code>
         ),
         pre: ({ children }) => (
-          <pre className="my-6 overflow-x-auto rounded-xl bg-[#182536] p-5 font-mono text-sm leading-6 text-[#E8EEF5]">
+          <pre className="my-6 overflow-x-auto rounded-xl bg-[#182536] [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit p-5 font-mono text-sm leading-6 text-[#E8EEF5]">
             {children}
           </pre>
         ),

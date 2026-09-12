@@ -14,7 +14,7 @@ export const getCookie = async (key: string) => {
 export const setCookie = async (
   key: string,
   value: string,
-  maxAge = 6 * 60 * 60,
+  maxAge: number | null = 6 * 60 * 60,
 ) => {
   try {
     const cookieStore = await cookies();
@@ -22,7 +22,7 @@ export const setCookie = async (
     cookieStore.set(key, value, {
       secure: true,
       sameSite: 'lax',
-      maxAge,
+      ...(maxAge === null ? {} : { maxAge }),
       httpOnly: true,
       path: '/',
     });

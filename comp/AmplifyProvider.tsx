@@ -9,10 +9,11 @@ const AmplifyProvider = ({ children }: { children: React.ReactNode }) => {
     let disposed = false;
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const syncCognitoToken = async () => {
+    const syncCognitoToken = async (forceRefresh = false) => {
+      if (refreshTimer) clearTimeout(refreshTimer);
       try {
         // fetchAuthSessionは必要に応じてAmplify側でTokenを更新する。
-        const expiresAt = await restoreAppSession();
+        const expiresAt = await restoreAppSession(forceRefresh);
         if (disposed || !expiresAt) return;
 
         // Access Token失効の1分前にHttpOnly Cookieも更新する。
@@ -20,7 +21,7 @@ const AmplifyProvider = ({ children }: { children: React.ReactNode }) => {
           30_000,
           expiresAt * 1000 - Date.now() - 60_000,
         );
-        refreshTimer = setTimeout(() => void syncCognitoToken(), refreshDelay);
+        refreshTimer = setTimeout(() => void syncCognitoToken(true), refreshDelay);
 
         // 期限切れCookieでloginへ戻された場合は、AmplifyのRefresh Tokenで復帰する。
         if (window.location.pathname === '/login') {
@@ -38,10 +39,13 @@ const AmplifyProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
+    const onFocus = () => void syncCognitoToken();
+    window.addEventListener('focus', onFocus);
     void syncCognitoToken();
 
     return () => {
       disposed = true;
+      window.removeEventListener('focus', onFocus);
       if (refreshTimer) clearTimeout(refreshTimer);
     };
   }, []);

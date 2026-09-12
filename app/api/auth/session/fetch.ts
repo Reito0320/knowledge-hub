@@ -1,3 +1,4 @@
+import { isLoginRemembered } from '@/lib/auth/remember-me';
 import { readJsonResponse } from '@/lib/http/read-json-response';
 
 export type SessionUser = {
@@ -38,6 +39,7 @@ export const fetchPostCreateSession = async (header: string) => {
     method: 'POST',
     headers: {
       Authorization: header,
+      'X-Remember-Me': String(isLoginRemembered()),
     },
   });
   const { message } = await readJsonResponse<{ message: string }>(res);

@@ -5,9 +5,9 @@ import { fetchAuthSession } from 'aws-amplify/auth';
  * Amplifyが更新したCognito TokenをHttpOnly Cookieへ同期させる関数。
  * @returns -boolean
  */
-export const restoreAppSession = async () => {
+export const restoreAppSession = async (forceRefresh = false) => {
   /* cognitoのsessionを取得 */
-  const authSession = await fetchAuthSession();
+  const authSession = await fetchAuthSession({ forceRefresh });
   const accessToken = authSession.tokens?.accessToken?.toString();
 
   if (!accessToken) return null;

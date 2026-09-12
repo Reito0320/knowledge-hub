@@ -22,6 +22,7 @@ export type SelectedTag =
 
 import MarkdownRenderer from '@/comp/MarkdownRender';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
+import { indentMarkdownList } from '@/lib/markdown/indent-list';
 import { continueMarkdownList } from '@/lib/markdown/continue-list';
 import { uploadPostImage } from '@/app/api/post/images/fetch';
 import type { PostVisibility } from '@/lib/post/post-visibility';
@@ -36,6 +37,7 @@ import {
   FiCheck,
   FiChevronDown,
   FiCode,
+  FiTerminal,
   FiEdit3,
   FiEye,
   FiHash,
@@ -77,7 +79,8 @@ type MarkdownTool =
   | 'list'
   | 'link'
   | 'image'
-  | 'code';
+  | 'code'
+  | 'codeBlock';
 
 const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
   const [title, setTitle] = useState<string>(initialData?.title ?? '');
@@ -96,6 +99,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
   );
   const [editorMode, setEditorMode] = useState<EditorMode>('edit');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [linkEditor, setLinkEditor] = useState<{ start: number; end: number; name: string; url: string } | null>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const imageSelectionRef = useRef({ start: 0, end: 0, alt: '' });
@@ -230,7 +234,8 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     { label: 'リスト', icon: FiList, tool: 'list' },
     { label: 'リンク', icon: FiLink, tool: 'link' },
     { label: '画像', icon: FiImage, tool: 'image' },
-    { label: 'コード', icon: FiCode, tool: 'code' },
+    { label: 'インラインコード', icon: FiCode, tool: 'code' },
+    { label: 'コードブロック', icon: FiTerminal, tool: 'codeBlock' },
   ];
 
   const applyMarkdown = (tool: MarkdownTool) => {
@@ -282,20 +287,25 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
         break;
       }
       case 'link': {
-        const text = selectedText || 'リンクテキスト';
-        replacement = `[${text}](https://example.com)`;
-        nextSelectionStart = 1;
-        nextSelectionEnd = 1 + text.length;
-        break;
+        setLinkEditor({ start: selectionStart, end: selectionEnd, name: selectedText, url: '' });
+        return;
       }
       case 'image':
         return;
-      case 'code': {
+      case 'code':
+      case 'codeBlock': {
         const text = selectedText || 'コード';
-        const isBlockCode = selectedText.includes('\n');
-        replacement = isBlockCode ? `\`\`\`\n${text}\n\`\`\`` : `\`${text}\``;
-        nextSelectionStart = isBlockCode ? 4 : 1;
+        const isBlockCode = tool === 'codeBlock' || selectedText.includes('\n');
+        const fence = '`'.repeat(Math.max(3, ...(text.match(/`+/g) ?? []).map((run) => run.length + 1)));
+        replacement = isBlockCode ? `${fence}\n${text}\n${fence}` : `\`${text}\``;
+        nextSelectionStart = isBlockCode ? fence.length + 1 : 1;
         nextSelectionEnd = nextSelectionStart + text.length;
+        if (isBlockCode) {
+          const prefix = selectionStart > 0 ? '\n\n' : '';
+          replacement = prefix + replacement + '\n\n';
+          nextSelectionStart += prefix.length;
+          nextSelectionEnd += prefix.length;
+        }
         break;
       }
     }
@@ -313,6 +323,20 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
         selectionStart + nextSelectionStart,
         selectionStart + nextSelectionEnd,
       );
+    });
+  };
+
+  const finishLink = () => {
+    if (!linkEditor) return;
+    const { start, end, name, url } = linkEditor;
+    const label = name.replace(/([\\[\]])/g, '\\$1');
+    const destination = url.trim().replace(/ /g, '%20').replace(/\(/g, '%28').replace(/\)/g, '%29');
+    const replacement = destination ? `[${label || destination}](${destination})` : name;
+    setContent((current) => current.slice(0, start) + replacement + current.slice(end));
+    setLinkEditor(null);
+    window.requestAnimationFrame(() => {
+      contentTextareaRef.current?.focus();
+      contentTextareaRef.current?.setSelectionRange(start + replacement.length, start + replacement.length);
     });
   };
 
@@ -521,7 +545,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                 onClick={() =>
                   tool === 'image' ? selectPostImage() : applyMarkdown(tool)
                 }
-                disabled={tool === 'image' && isUploadingImage}
+                disabled={linkEditor !== null || (tool === 'image' && isUploadingImage)}
                 whileTap={{ scale: 0.92 }}
                 className="flex size-9 items-center justify-center rounded-lg text-[#716961] transition hover:bg-[#FFF0E2] hover:text-[#A66334] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A66334] disabled:cursor-wait disabled:opacity-50"
               >
@@ -536,6 +560,25 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
         )}
 
         <div className="relative">
+          {linkEditor && (
+            <div onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) finishLink();
+            }} role="dialog" aria-label="リンクを挿入" className="absolute left-4 top-2 z-20 w-[min(22rem,calc(100%-2rem))] rounded-xl border border-[#DED6CE] bg-white p-4 shadow-xl"
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') { event.preventDefault(); setLinkEditor(null); contentTextareaRef.current?.focus(); }
+                if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); finishLink(); }
+              }}>
+              <label htmlFor="link-name" className="block text-sm font-semibold">リンク名</label>
+              <input id="link-name" value={linkEditor.name} onChange={(e) => setLinkEditor({ ...linkEditor, name: e.target.value })} className="mb-3 mt-1 w-full rounded border border-[#DED6CE] px-3 py-2" />
+              <label htmlFor="link-url" className="block text-sm font-semibold">リンク先</label>
+              <input id="link-url" autoFocus value={linkEditor.url} onChange={(e) => setLinkEditor({ ...linkEditor, url: e.target.value })} placeholder="https://" className="mt-1 w-full rounded border border-[#DED6CE] px-3 py-2" />
+              <p className="mt-2 text-xs text-[#716961]">リンク先が空の場合は通常のテキストになります。</p>
+              <div className="mt-3 flex justify-end gap-3">
+                <button type="button" onClick={() => { setLinkEditor(null); contentTextareaRef.current?.focus(); }}>キャンセル</button>
+                <button type="button" onClick={finishLink} className="rounded bg-[#A66334] px-3 py-2 text-white">適用</button>
+              </div>
+            </div>
+          )}
           {editorMode === 'edit' ? (
             <>
               <label htmlFor="post-content" className="sr-only">
@@ -546,18 +589,19 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                 id="post-content"
                 name="content"
                 spellCheck="false"
+                readOnly={linkEditor !== null}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 onKeyDown={(event) => {
                   // 日本語変換の確定EnterとShift+Enterは通常入力に任せる。
                   if (
-                    event.key !== 'Enter' ||
-                    event.shiftKey ||
+                    (event.key !== 'Enter' && event.key !== 'Tab') ||
+                    (event.key === 'Enter' && event.shiftKey) ||
                     event.nativeEvent.isComposing
                   )
                     return;
                   const textarea = event.currentTarget;
-                  const result = continueMarkdownList(
+                  const result = event.key === 'Tab' ? indentMarkdownList(textarea.value, textarea.selectionStart, textarea.selectionEnd, event.shiftKey) : continueMarkdownList(
                     textarea.value,
                     textarea.selectionStart,
                     textarea.selectionEnd,
@@ -568,7 +612,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                   setContent(result.content);
                   window.requestAnimationFrame(() => {
                     textarea.focus();
-                    textarea.setSelectionRange(result.cursor, result.cursor);
+                    textarea.setSelectionRange(result.cursor, 'end' in result && typeof result.end === 'number' ? result.end : result.cursor);
                   });
                 }}
                 placeholder={`## 見出し\n\n共有したい知識や経験をMarkdownで書いてみましょう。\n\n- 背景や困っていたこと\n- 試したこと\n- 解決方法と学び`}

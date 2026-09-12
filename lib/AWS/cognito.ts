@@ -1,3 +1,4 @@
+import { configureAuthStorage } from '@/lib/auth/remember-me';
 import { Amplify } from 'aws-amplify';
 
 Amplify.configure({
@@ -8,3 +9,5 @@ Amplify.configure({
     },
   },
 });
+
+configureAuthStorage();

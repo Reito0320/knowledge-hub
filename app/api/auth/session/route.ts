@@ -161,7 +161,7 @@ export const POST = async (req: NextRequest) => {
 
     const nowInSeconds = Math.floor(Date.now() / 1000);
     const maxAge = payload.exp ? Math.max(1, payload.exp - nowInSeconds) : 3600;
-    await setCookie(COGNITO_ACCESS_TOKEN_COOKIE, accessToken, maxAge);
+    await setCookie(COGNITO_ACCESS_TOKEN_COOKIE, accessToken, req.headers.get('X-Remember-Me') === 'true' ? maxAge : null);
 
     return NextResponse.json(
       {
