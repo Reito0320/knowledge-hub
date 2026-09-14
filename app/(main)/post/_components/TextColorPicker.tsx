@@ -13,12 +13,12 @@ const colors = [
 
 const TextColorPicker = ({ onSelect }: Props) => (
   <div className="group relative">
-    <button type="button" aria-label="文字色を変更" title="文字色" className="flex size-9 items-center justify-center rounded-lg text-[#76685D] transition hover:bg-[#FFF1E5] hover:text-[#A66334]">
+    <button onMouseDown={(event) => event.preventDefault()} type="button" aria-label="文字色を変更" title="文字色" className="flex size-9 items-center justify-center rounded-lg text-[#76685D] transition hover:bg-[#FFF1E5] hover:text-[#A66334]">
       <FiDroplet aria-hidden="true" />
     </button>
     <div className="invisible absolute left-0 top-full z-40 mt-1 flex translate-y-1 gap-1 rounded-xl border border-[#E7DED5] bg-white p-2 opacity-0 shadow-lg transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
       {colors.map((color) => (
-        <button key={color.value} type="button" title={color.label} aria-label={`文字色を${color.label}にする`} onClick={() => onSelect(color.value)} className={`size-6 rounded-full border-2 border-white shadow-sm ring-1 ring-black/10 transition hover:scale-110 ${color.className}`} />
+        <button onMouseDown={(event) => event.preventDefault()} key={color.value} type="button" title={color.label} aria-label={`文字色を${color.label}にする`} onClick={() => onSelect(color.value)} className={`size-6 rounded-full border-2 border-white shadow-sm ring-1 ring-black/10 transition hover:scale-110 ${color.className}`} />
       ))}
     </div>
   </div>

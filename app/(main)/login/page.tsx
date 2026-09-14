@@ -1,5 +1,8 @@
 'use client';
 
+import { authHref, returnPathFromSearch } from '@/lib/auth/return-path';
+import { useReturnPath } from '@/lib/auth/use-return-path';
+
 import { fetchPostCreateSession } from '@/app/api/auth/session/fetch';
 import { fetchPostCreateUser } from '@/app/api/users/provision/fetch';
 import { setLoginRemembered } from '@/lib/auth/remember-me';
@@ -15,6 +18,7 @@ type LoginStep = 'LOGIN' | 'MFA_SETUP' | 'MFA_CODE';
 type LoginResult = 'SIGNED_IN' | 'MFA_SETUP' | 'MFA_CODE';
 
 const LoginPage = () => {
+  const nextPath = useReturnPath();
   const [loginStep, setLoginStep] = useState<LoginStep>('LOGIN');
   const [setupUri, setSetupUri] = useState('');
   const [sharedSecret, setSharedSecret] = useState('');
@@ -53,7 +57,7 @@ const LoginPage = () => {
 
     // Cookie設定後の完全なページ読込で、ProxyとServer Componentにも
     // 新しい認証状態を確実に反映する。
-    window.location.replace('/');
+    window.location.replace(returnPathFromSearch(window.location.search));
   };
 
   /**
@@ -114,7 +118,7 @@ const LoginPage = () => {
         toast.info(
           <span>
             アカウントが登録されていません。{' '}
-            <Link href="/signup" className="font-bold underline">
+            <Link href={authHref('/signup', nextPath)} className="font-bold underline">
               新規登録へ
             </Link>
           </span>,
@@ -232,6 +236,13 @@ const LoginPage = () => {
             作成した社内専用アカウントにログインします
           </p>
 
+          {nextPath.startsWith('/post/') && (
+            <p className="mb-5 rounded-lg bg-[#FCF7F2] p-3 text-sm text-[#756C64]">
+              記事を読むにはログインが必要です。アカウントをお持ちでない方は
+              <Link href={authHref('/signup', nextPath)} className="font-bold text-[#A66334] underline">新規登録</Link>
+              してください。
+            </p>
+          )}
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label
@@ -295,7 +306,7 @@ const LoginPage = () => {
           <p className="mt-5 text-center text-[13px] text-[#7B8899]">
             アカウントをお持ちでない方は
             <Link
-              href="/signup"
+              href={authHref('/signup', nextPath)}
               className="ml-1 font-bold text-[#A66334] hover:text-[#86502D] hover:underline"
             >
               新規登録

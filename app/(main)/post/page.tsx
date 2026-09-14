@@ -243,7 +243,19 @@ const PostPage = () => {
                       )}
                     </div>
 
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button type="button" title="閲覧URLをコピー（記事の公開範囲が適用されます）"
+                        aria-label={`${post.title}の閲覧URLをコピー`}
+                        onClick={async (event) => {
+                          event.stopPropagation();
+                          try {
+                            await navigator.clipboard.writeText(new URL(`/post/${post.id}`, window.location.origin).href);
+                            toast.success('閲覧URLをコピーしました。閲覧にはログインと記事の閲覧権限が必要です。');
+                          } catch { toast.error('URLをコピーできませんでした。記事を開いてアドレスバーからコピーしてください。'); }
+                        }}
+                        className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#DDE4EC] px-3 text-sm font-bold text-[#566477] hover:bg-[#EEF4FB]">
+                        <FiLink aria-hidden="true" />閲覧URL
+                      </button>
                       <Link
                         href={`/post/${post.id}/edit`}
                         onClick={(e) => e.stopPropagation()}

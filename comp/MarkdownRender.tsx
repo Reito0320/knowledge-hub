@@ -1,3 +1,4 @@
+import CodeBlock from './CodeBlock';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
@@ -81,11 +82,7 @@ const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
             {children}
           </code>
         ),
-        pre: ({ children }) => (
-          <pre className="my-6 overflow-x-auto rounded-xl bg-[#182536] [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit p-5 font-mono text-sm leading-6 text-[#E8EEF5]">
-            {children}
-          </pre>
-        ),
+        pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
         table: ({ children }) => (
           <div className="my-6 overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">

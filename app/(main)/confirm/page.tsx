@@ -1,5 +1,8 @@
 'use client';
 
+import { authHref, returnPathFromSearch } from '@/lib/auth/return-path';
+import { useReturnPath } from '@/lib/auth/use-return-path';
+
 import { resendSignUpCode } from 'aws-amplify/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -7,6 +10,7 @@ import { useState } from 'react';
 import { cognitoConfirm, getErrorMessage } from './confirm';
 
 const ConfirmForm = () => {
+  const nextPath = useReturnPath();
   const router = useRouter();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -31,7 +35,7 @@ const ConfirmForm = () => {
       const result = await cognitoConfirm(email, code);
       if (result.isSignUpComplete) {
         sessionStorage.removeItem('signupEmail');
-        router.replace('/login?confirmed=1');
+        router.replace(authHref('/login?confirmed=1', returnPathFromSearch(window.location.search)));
         return;
       }
 
@@ -141,7 +145,7 @@ const ConfirmForm = () => {
 
       <div className="mt-5 text-center text-[13px]">
         <Link
-          href="/signup"
+          href={authHref('/signup', nextPath)}
           className="font-medium text-[#A66334] hover:text-[#86502D] hover:underline"
         >
           メールアドレスを変更する

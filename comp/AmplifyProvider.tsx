@@ -1,6 +1,7 @@
 'use client';
 
 import '@/lib/AWS/cognito';
+import { returnPathFromSearch } from '@/lib/auth/return-path';
 import { restoreAppSession } from '@/lib/auth/restore';
 import { useEffect } from 'react';
 
@@ -25,13 +26,7 @@ const AmplifyProvider = ({ children }: { children: React.ReactNode }) => {
 
         // 期限切れCookieでloginへ戻された場合は、AmplifyのRefresh Tokenで復帰する。
         if (window.location.pathname === '/login') {
-          const requestedPath = new URLSearchParams(window.location.search).get(
-            'next',
-          );
-          const safePath =
-            requestedPath?.startsWith('/') && !requestedPath.startsWith('//')
-              ? requestedPath
-              : '/';
+          const safePath = returnPathFromSearch(window.location.search);
           window.location.replace(safePath);
         }
       } catch {

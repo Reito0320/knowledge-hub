@@ -1,5 +1,8 @@
 'use client';
 
+import { authHref, returnPathFromSearch } from '@/lib/auth/return-path';
+import { useReturnPath } from '@/lib/auth/use-return-path';
+
 import { useRouter } from 'next/navigation';
 import { getSignupErrorMessage, handleSignup } from './signup';
 import { useEffect, useState } from 'react';
@@ -7,6 +10,7 @@ import { toast } from 'react-toastify';
 import Link from 'next/link';
 
 const SingUpPage = () => {
+  const nextPath = useReturnPath();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [departments, setDepartments] = useState<
@@ -36,7 +40,7 @@ const SingUpPage = () => {
     try {
       await handleSignup(name.trim(), email.trim(), password, departmentId);
       toast.success(`${email.trim()} 宛てに認証コードを送信しました。`);
-      router.push('/confirm');
+      router.push(authHref('/confirm', returnPathFromSearch(window.location.search)));
     } catch (error) {
       console.error('新規登録に失敗しました:', error);
       toast.error(getSignupErrorMessage(error));
@@ -237,7 +241,7 @@ const SingUpPage = () => {
           <p className="mt-5 text-center text-[13px] text-[#7B8899]">
             すでにアカウントをお持ちの方は
             <Link
-              href="/login"
+              href={authHref('/login', nextPath)}
               className="ml-1 font-bold text-[#A66334] hover:text-[#86502D] hover:underline"
             >
               ログイン

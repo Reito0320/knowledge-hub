@@ -238,6 +238,27 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     { label: 'コードブロック', icon: FiTerminal, tool: 'codeBlock' },
   ];
 
+  const editorScrollRef = useRef({ top: 0, left: 0 });
+  const rememberEditorScroll = () => {
+    const textarea = contentTextareaRef.current;
+    if (textarea) editorScrollRef.current = { top: textarea.scrollTop, left: textarea.scrollLeft };
+  };
+  const restoreEditorScroll = () => {
+    const textarea = contentTextareaRef.current;
+    if (textarea) { textarea.scrollTop = editorScrollRef.current.top; textarea.scrollLeft = editorScrollRef.current.left; }
+  };
+
+  useEffect(() => {
+    const toggle = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key !== 'Enter' || event.isComposing || event.repeat) return;
+      if (document.querySelector('[aria-label="リンクを挿入"]')) return;
+      event.preventDefault();
+      setEditorMode((mode) => mode === 'edit' ? 'preview' : 'edit');
+    };
+    window.addEventListener('keydown', toggle);
+    return () => window.removeEventListener('keydown', toggle);
+  }, []);
+
   const applyMarkdown = (tool: MarkdownTool) => {
     const textarea = contentTextareaRef.current;
     if (!textarea) return;
@@ -245,6 +266,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     const selectionStart = textarea.selectionStart;
     const selectionEnd = textarea.selectionEnd;
     const selectedText = content.slice(selectionStart, selectionEnd);
+    rememberEditorScroll();
 
     let replacement = '';
     let nextSelectionStart = 0;
@@ -318,11 +340,12 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
 
     // Reactの再描画後に、挿入した文字を選択した状態へ戻す。
     window.requestAnimationFrame(() => {
-      textarea.focus();
+      textarea.focus({ preventScroll: true });
       textarea.setSelectionRange(
         selectionStart + nextSelectionStart,
         selectionStart + nextSelectionEnd,
       );
+      restoreEditorScroll();
     });
   };
 
@@ -335,8 +358,9 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     setContent((current) => current.slice(0, start) + replacement + current.slice(end));
     setLinkEditor(null);
     window.requestAnimationFrame(() => {
-      contentTextareaRef.current?.focus();
+      contentTextareaRef.current?.focus({ preventScroll: true });
       contentTextareaRef.current?.setSelectionRange(start + replacement.length, start + replacement.length);
+      restoreEditorScroll();
     });
   };
 
@@ -344,6 +368,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     const textarea = contentTextareaRef.current;
     if (!textarea || isUploadingImage) return;
 
+    rememberEditorScroll();
     imageSelectionRef.current = {
       start: textarea.selectionStart,
       end: textarea.selectionEnd,
@@ -377,8 +402,9 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
         const textarea = contentTextareaRef.current;
         if (!textarea) return;
         const cursor = start + markdown.length;
-        textarea.focus();
+        textarea.focus({ preventScroll: true });
         textarea.setSelectionRange(cursor, cursor);
+        restoreEditorScroll();
       });
     } catch (error) {
       console.error('記事画像のアップロードに失敗しました:', error);
@@ -397,13 +423,15 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     if (!textarea) return;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
+    rememberEditorScroll();
     const text = content.slice(start, end) || '色を付ける文字';
     const openingTag = `<span data-color="${color}">`;
     const replacement = `${openingTag}${text}</span>`;
     setContent(content.slice(0, start) + replacement + content.slice(end));
     window.requestAnimationFrame(() => {
-      textarea.focus();
+      textarea.focus({ preventScroll: true });
       textarea.setSelectionRange(start + openingTag.length, start + openingTag.length + text.length);
+      restoreEditorScroll();
     });
   };
 
@@ -542,6 +570,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                 type="button"
                 title={label}
                 aria-label={`${label}のMarkdownを挿入`}
+                onMouseDown={(event) => event.preventDefault()}
                 onClick={() =>
                   tool === 'image' ? selectPostImage() : applyMarkdown(tool)
                 }
@@ -565,7 +594,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
               if (!event.currentTarget.contains(event.relatedTarget as Node | null)) finishLink();
             }} role="dialog" aria-label="リンクを挿入" className="absolute left-4 top-2 z-20 w-[min(22rem,calc(100%-2rem))] rounded-xl border border-[#DED6CE] bg-white p-4 shadow-xl"
               onKeyDown={(event) => {
-                if (event.key === 'Escape') { event.preventDefault(); setLinkEditor(null); contentTextareaRef.current?.focus(); }
+                if (event.key === 'Escape') { event.preventDefault(); setLinkEditor(null); contentTextareaRef.current?.focus({ preventScroll: true }); }
                 if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); finishLink(); }
               }}>
               <label htmlFor="link-name" className="block text-sm font-semibold">リンク名</label>
@@ -574,7 +603,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
               <input id="link-url" autoFocus value={linkEditor.url} onChange={(e) => setLinkEditor({ ...linkEditor, url: e.target.value })} placeholder="https://" className="mt-1 w-full rounded border border-[#DED6CE] px-3 py-2" />
               <p className="mt-2 text-xs text-[#716961]">リンク先が空の場合は通常のテキストになります。</p>
               <div className="mt-3 flex justify-end gap-3">
-                <button type="button" onClick={() => { setLinkEditor(null); contentTextareaRef.current?.focus(); }}>キャンセル</button>
+                <button type="button" onClick={() => { setLinkEditor(null); contentTextareaRef.current?.focus({ preventScroll: true }); }}>キャンセル</button>
                 <button type="button" onClick={finishLink} className="rounded bg-[#A66334] px-3 py-2 text-white">適用</button>
               </div>
             </div>
@@ -597,7 +626,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                   if (
                     (event.key !== 'Enter' && event.key !== 'Tab') ||
                     (event.key === 'Enter' && event.shiftKey) ||
-                    event.nativeEvent.isComposing
+                    event.nativeEvent.isComposing || event.metaKey || event.ctrlKey
                   )
                     return;
                   const textarea = event.currentTarget;
@@ -611,7 +640,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
                   event.preventDefault();
                   setContent(result.content);
                   window.requestAnimationFrame(() => {
-                    textarea.focus();
+                    textarea.focus({ preventScroll: true });
                     textarea.setSelectionRange(result.cursor, 'end' in result && typeof result.end === 'number' ? result.end : result.cursor);
                   });
                 }}
@@ -632,7 +661,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
           )}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-[#EEF1F4] bg-white/95 px-5 py-3 text-xs text-[#8A97A8] backdrop-blur sm:px-7">
             <span>Markdown記法に対応しています</span>
-            <span>{content.length}文字</span>
+            <span className="flex flex-wrap items-center justify-end gap-3"><span>⌘ / Ctrl + Enter：編集・プレビュー切替</span><span>{content.length}文字</span></span>
           </div>
         </div>
       </motion.section>

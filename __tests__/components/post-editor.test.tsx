@@ -35,3 +35,24 @@ describe('editor toolbar', () => {
     expect(editor.value).toBe('```\n選択した文字\n```\n\n');
   });
 });
+
+it('toggles preview with Command+Enter and Ctrl+Enter without changing text', async () => {
+  const editor = setup();
+  fireEvent.keyDown(editor, { key: 'Enter', metaKey: true });
+  expect(screen.queryByLabelText('記事本文')).toBeNull();
+  expect(screen.getByText('⌘ / Ctrl + Enter：編集・プレビュー切替')).toBeTruthy();
+  fireEvent.keyDown(window, { key: 'Enter', ctrlKey: true });
+  expect((screen.getByLabelText('記事本文') as HTMLTextAreaElement).value).toBe('選択した文字');
+});
+
+it('preserves editor scrolling after formatting a selection', async () => {
+  const editor = setup();
+  editor.scrollTop = 480;
+  editor.scrollLeft = 20;
+  const focus = vi.spyOn(editor, 'focus');
+  fireEvent.click(screen.getByLabelText('太字のMarkdownを挿入'));
+  await waitFor(() => expect(focus).toHaveBeenCalledWith({ preventScroll: true }));
+  expect(editor.value).toBe('**選択した文字**');
+  expect(editor.scrollTop).toBe(480);
+  expect(editor.scrollLeft).toBe(20);
+});
