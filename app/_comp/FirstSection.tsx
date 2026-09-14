@@ -295,19 +295,6 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
             </div>
           )}
         </motion.div>
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-[#756C64]">
-          <span className="mr-1 font-semibold">よく検索されています</span>
-          {['入社手続き', 'AWS', '開発環境', '社内申請'].map((keyword) => (
-            <button
-              key={keyword}
-              type="button"
-              onClick={() => router.push('/search?category=' + keyword)}
-              className="rounded-full border border-[#DED4CA] bg-white/80 px-3 py-1.5 transition hover:border-[#C88A5B] hover:bg-[#FFF8F1] hover:text-[#99582E]"
-            >
-              {keyword}
-            </button>
-          ))}
-        </div>
       </div>
     </section>
   );
