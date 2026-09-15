@@ -63,7 +63,8 @@ const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
 const PostPage = () => {
   const router = useRouter();
   const [posts, setPosts] = useState<PostListItem[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
   useEffect(() => {
     const getPostList = async () => {
@@ -85,9 +86,11 @@ const PostPage = () => {
   const { publishedCount, draftCount, totalLikes } = postStatusCounter(posts);
 
   const handleDeletePost = async (postId: string, title: string) => {
+    if (deletingPostId) return;
     if (!window.confirm(`「${title || '無題の記事'}」を削除しますか？`)) return;
 
     try {
+      setDeletingPostId(postId);
       await fetchDeletePost(postId);
       setPosts((current) => current.filter((post) => post.id !== postId));
       toast.success('記事を削除しました。');
@@ -95,6 +98,8 @@ const PostPage = () => {
       console.error(error);
       setErrorMessage('記事を削除できませんでした。');
       toast.error('記事を削除できませんでした。');
+    } finally {
+      setDeletingPostId(null);
     }
   };
 
@@ -145,6 +150,8 @@ const PostPage = () => {
 
         {isLoading ? (
           <Skeleton />
+        ) : errorMessage ? (
+          <div role="alert" className="mt-7 text-sm text-[#A34F55]">{errorMessage}</div>
         ) : posts.length === 0 ? (
           <section className="mt-7 flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-[#CBD5E0] bg-white px-6 text-center">
             <span className="flex size-14 items-center justify-center rounded-2xl bg-[#E8F0FA] text-[#254F8F]">
@@ -164,8 +171,6 @@ const PostPage = () => {
               記事を書く
             </Link>
           </section>
-        ) : errorMessage ? (
-          <div>{errorMessage}</div>
         ) : (
           <section className="mt-7" aria-label="投稿した記事">
             <div className="flex items-center justify-between">
@@ -271,9 +276,10 @@ const PostPage = () => {
                           void handleDeletePost(post.id, post.title);
                         }}
                         aria-label={`${post.title}を削除`}
-                        className="flex size-10 items-center justify-center rounded-lg border border-[#E7D5D5] text-[#A34F55] transition hover:bg-[#FBEFEF]"
+                        disabled={deletingPostId !== null}
+                        className="flex size-10 items-center justify-center rounded-lg border border-[#E7D5D5] text-[#A34F55] transition hover:bg-[#FBEFEF] disabled:cursor-wait disabled:opacity-50"
                       >
-                        <FiTrash2 aria-hidden="true" />
+                        {deletingPostId === post.id ? <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" /> : <FiTrash2 aria-hidden="true" />}
                       </button>
                     </div>
                   </div>

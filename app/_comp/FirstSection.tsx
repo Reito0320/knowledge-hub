@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import {
   FiBookOpen,
   FiBriefcase,
@@ -30,6 +30,7 @@ type KnowledgeSuggestion = {
 
 const FirstSection = ({ stats }: FirstSectionProps) => {
   const router = useRouter();
+  const [isNavigating, startNavigation] = useTransition();
   const [knowledgeSearch, setKnowledgeSearch] = useState<string>('');
   const [knowledgeSuggestions, setKnowledgeSuggestions] = useState<
     KnowledgeSuggestion[]
@@ -99,9 +100,9 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
   };
 
   const handleKnowledgeSearchButton = () => {
-    if (!knowledgeSearch) return;
     const trimKeyWord = knowledgeSearch.trim();
-    router.push('/search?q=' + encodeURIComponent(trimKeyWord));
+    if (!trimKeyWord || isNavigating) return;
+    startNavigation(() => router.push('/search?q=' + encodeURIComponent(trimKeyWord)));
   };
 
   return (
@@ -240,15 +241,19 @@ const FirstSection = ({ stats }: FirstSectionProps) => {
                 }
               }}
               value={knowledgeSearch}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') handleKnowledgeSearchButton();
+              }}
               className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-[#9AA7B7]"
             />
           </div>
           <button
             type="button"
             onClick={handleKnowledgeSearchButton}
-            className="mt-2 h-11 w-full rounded-xl bg-[#A66334] px-6 text-sm font-bold text-white transition hover:bg-[#86502D] sm:mt-0 sm:w-auto"
+            disabled={!knowledgeSearch.trim() || isNavigating}
+            className="mt-2 h-11 w-full rounded-xl bg-[#A66334] px-6 text-sm font-bold text-white transition hover:bg-[#86502D] disabled:cursor-not-allowed disabled:opacity-50 sm:mt-0 sm:w-auto"
           >
-            ナレッジを検索
+            {isNavigating ? '検索中...' : 'ナレッジを検索'}
           </button>
 
           {knowledgeSearch.trim() && (

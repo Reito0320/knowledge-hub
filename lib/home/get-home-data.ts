@@ -1,6 +1,7 @@
 import 'server-only';
 import { prisma } from '@/lib/prisma';
 import { createOptionalProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
+import { unstable_cache } from 'next/cache';
 
 export type HomePost = {
   id: string;
@@ -62,7 +63,8 @@ const postSelect = {
   },
 } as const;
 
-export const getHomeData = async () => {
+// 全員に公開されたDBデータだけを短時間共有する。期限付きの画像URLは毎回生成する。
+const getCachedHomeRecords = unstable_cache(async () => {
   const [
     publishedPostCount,
     postingMemberCount,
@@ -129,6 +131,31 @@ export const getHomeData = async () => {
       },
     }),
   ]);
+  return {
+    publishedPostCount,
+    postingMemberCount,
+    departmentCount,
+    techPostCount,
+    businessPostCount,
+    popularPosts,
+    latestPosts,
+    trendingTags,
+    featuredMembers,
+  };
+}, ['public-home-records'], { revalidate: 60 });
+
+export const getHomeData = async () => {
+  const {
+    publishedPostCount,
+    postingMemberCount,
+    departmentCount,
+    techPostCount,
+    businessPostCount,
+    popularPosts,
+    latestPosts,
+    trendingTags,
+    featuredMembers,
+  } = await getCachedHomeRecords();
 
   const serializePost = async (post: (typeof popularPosts)[number]) => {
     const photoUrl = await createOptionalProfileImageViewUrl(

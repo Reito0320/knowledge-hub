@@ -25,14 +25,23 @@ const MemberSearchControls = ({ member, memberId, category }: Props) => {
   return (
     <section className="mt-6 rounded-2xl border border-[#E3D9CF] bg-[#FFFCF9] p-4 sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-      <form action="/search" className="w-full lg:max-w-2xl">
+      <form onSubmit={(event) => {
+        event.preventDefault();
+        if (isPending) return;
+        const formData = new FormData(event.currentTarget);
+        const name = String(formData.get('member') ?? '').trim();
+        const params = new URLSearchParams();
+        if (name) params.set('member', name);
+        if (category) params.set('category', category);
+        startTransition(() => router.push(`/search?${params.toString()}`));
+      }} className="w-full lg:max-w-2xl">
         <label htmlFor="member-search" className="mb-2 block text-sm font-bold text-[#514941]">メンバー名で検索</label>
         <div className="flex gap-2">
         <div className="relative min-w-0 flex-1">
           <FiSearch aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9A8B7E]" />
-          <input id="member-search" name="member" type="search" defaultValue={member} placeholder="名前の一部を入力してください" className="h-11 w-full rounded-xl border border-[#DED4CA] bg-white pl-10 pr-4 text-sm text-[#4B4E54] outline-none transition placeholder:text-[#A69C93] focus:border-[#B97845]/60 focus:ring-3 focus:ring-[#B97845]/10" />
+          <input id="member-search" name="member" type="search" defaultValue={member} disabled={isPending} placeholder="名前の一部を入力してください" className="h-11 w-full rounded-xl border border-[#DED4CA] bg-white pl-10 pr-4 text-sm text-[#4B4E54] outline-none transition placeholder:text-[#A69C93] focus:border-[#B97845]/60 focus:ring-3 focus:ring-[#B97845]/10" />
         </div>
-        <button type="submit" className="h-11 shrink-0 rounded-xl bg-[#A66334] px-5 text-sm font-bold text-white transition hover:bg-[#86502D]">検索</button>
+        <button type="submit" disabled={isPending} className="h-11 shrink-0 rounded-xl bg-[#A66334] px-5 text-sm font-bold text-white transition hover:bg-[#86502D] disabled:cursor-wait disabled:opacity-60">{isPending ? '検索中...' : '検索'}</button>
         </div>
       </form>
 

@@ -30,6 +30,7 @@ type SearchPageProps = {
     member?: SearchParamValue;
     memberId?: SearchParamValue;
     tag?: SearchParamValue;
+    page?: SearchParamValue;
   }>;
 };
 
@@ -48,6 +49,7 @@ const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
   month: 'short',
   day: 'numeric',
 });
+const pageSize = 20;
 
 const SearchPage = async ({ searchParams }: SearchPageProps) => {
   /* qはHomeの検索窓からのキーワード */
@@ -61,6 +63,10 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
   const member = getFirstSearchParam(params.member);
   const memberId = getFirstSearchParam(params.memberId);
   const tag = getFirstSearchParam(params.tag);
+  const requestedPage = Number(getFirstSearchParam(params.page));
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 && requestedPage <= 10000
+    ? requestedPage
+    : 1;
   const isMemberDirectory = !keyword && !tag;
 
   const currentUserId = await getCurrentUser();
@@ -74,6 +80,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
     category === 'TECH' || category === 'BUSINESS' ? category : '';
 
   if (tag || keyword) {
+    const searchBase = `/search?${tag ? `tag=${encodeURIComponent(tag)}` : `q=${encodeURIComponent(keyword)}`}${selectedCategory ? `&category=${selectedCategory}` : ''}`;
     const selectedTag = tag ? await prisma.tag.findUnique({
       where: { slug: tag },
       select: { id: true, name: true },
@@ -101,6 +108,8 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
             ],
           },
           orderBy: [{ publishedAt: 'desc' }, { updatedAt: 'desc' }],
+          skip: (page - 1) * pageSize,
+          take: pageSize + 1,
           select: {
             id: true,
             title: true,
@@ -115,6 +124,8 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
           },
         })
       : [];
+    const hasNextPage = posts.length > pageSize;
+    const visiblePosts = posts.slice(0, pageSize);
 
     return (
       <main className="min-h-[calc(100vh-4rem)] bg-[#F7F6F3] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
@@ -132,7 +143,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
             <p className="mt-2 text-sm text-[#7B8899]">
               {tag && !selectedTag
                 ? '指定されたタグは存在しないか、削除されています。'
-                : `公開記事 ${posts.length}件`}
+                : `公開記事 ${visiblePosts.length}件を表示${page > 1 ? `（${page}ページ目）` : ''}`}
             </p>
           </header>
 
@@ -155,7 +166,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
             </nav>
           )}
 
-          {posts.length === 0 ? (
+          {visiblePosts.length === 0 ? (
             <section className="mt-7 rounded-2xl border border-dashed border-[#CBD5E0] bg-white px-6 py-16 text-center">
               <FiSearch aria-hidden="true" className="mx-auto size-8 text-[#8A97A8]" />
               <h2 className="mt-4 text-lg font-bold text-[#1E3A5F]">
@@ -169,7 +180,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
             </section>
           ) : (
             <AnimatedList className="mt-7 space-y-4">
-              {posts.map((post) => (
+              {visiblePosts.map((post) => (
                 <AnimatedListItem key={post.id}>
                   <article className="rounded-2xl border border-[#E3DDD6] bg-white p-5 shadow-[0_12px_30px_rgba(72,48,30,0.05)] sm:p-6">
                     <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-[#66758A]">
@@ -198,6 +209,13 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
                 </AnimatedListItem>
               ))}
             </AnimatedList>
+          )}
+          {(page > 1 || hasNextPage) && (
+            <nav aria-label="検索結果のページ" className="mt-8 flex items-center justify-center gap-4 text-sm font-bold">
+              {page > 1 && <Link href={`${searchBase}${page > 2 ? `&page=${page - 1}` : ''}`} className="rounded-xl border border-[#E3D9CF] bg-white px-4 py-2 text-[#254F8F] hover:bg-[#FFF3E8]">前のページ</Link>}
+              <span className="text-[#66758A]">{page}ページ目</span>
+              {hasNextPage && <Link href={`${searchBase}&page=${page + 1}`} className="rounded-xl border border-[#E3D9CF] bg-white px-4 py-2 text-[#254F8F] hover:bg-[#FFF3E8]">次のページ</Link>}
+            </nav>
           )}
         </div>
       </main>
@@ -292,11 +310,14 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
         orderBy: {
           name: 'asc',
         },
+        skip: (page - 1) * pageSize,
+        take: pageSize + 1,
       })
     : [];
+  const hasNextMemberPage = memberRecords.length > pageSize;
 
   const members = await Promise.all(
-    memberRecords.map(async (targetMember) => {
+    memberRecords.slice(0, pageSize).map(async (targetMember) => {
       const photoUrl = await createOptionalProfileImageViewUrl(
         targetMember.photoObjectKey,
       );
@@ -348,7 +369,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
         ) : (
           <div className="mt-7">
             <p className="text-sm font-semibold text-[#66758A]">
-              {members.length}名・公開記事{postCount}件
+              このページのメンバー{members.length}名・公開記事{postCount}件
             </p>
 
             <AnimatedList className="mt-8 space-y-8">
@@ -489,6 +510,18 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
               })}
             </AnimatedList>
           </div>
+        )}
+
+        {(page > 1 || hasNextMemberPage) && (
+          <nav aria-label="メンバー検索結果のページ" className="mt-8 flex items-center justify-center gap-4 text-sm font-bold">
+            {page > 1 && (
+              <Link href={`/search?${new URLSearchParams({ ...(memberId ? { memberId } : member ? { member } : {}), ...(selectedCategory ? { category: selectedCategory } : {}), ...(page > 2 ? { page: String(page - 1) } : {}) })}`} className="rounded-xl border border-[#E3D9CF] bg-white px-4 py-2 text-[#254F8F] hover:bg-[#FFF3E8]">前のページ</Link>
+            )}
+            <span className="text-[#66758A]">{page}ページ目</span>
+            {hasNextMemberPage && (
+              <Link href={`/search?${new URLSearchParams({ ...(memberId ? { memberId } : member ? { member } : {}), ...(selectedCategory ? { category: selectedCategory } : {}), page: String(page + 1) })}`} className="rounded-xl border border-[#E3D9CF] bg-white px-4 py-2 text-[#254F8F] hover:bg-[#FFF3E8]">次のページ</Link>
+            )}
+          </nav>
         )}
 
       </div>

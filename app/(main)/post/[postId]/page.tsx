@@ -124,9 +124,16 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
 
   const handleToggleLike = async () => {
     if (isUpdatingLike) return;
+    const previousLiked = postData.likedByCurrentUser;
+    const previousCount = postData._count.likes;
+    setIsUpdatingLike(true);
+    setPostData((current) => current ? {
+      ...current,
+      likedByCurrentUser: !previousLiked,
+      _count: { ...current._count, likes: previousCount + (previousLiked ? -1 : 1) },
+    } : current);
 
     try {
-      setIsUpdatingLike(true);
       const result = await fetchTogglePostLike(postId);
       setPostData((current) =>
         current
@@ -141,6 +148,11 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
         result.liked ? '記事にいいねしました。' : 'いいねを取り消しました。',
       );
     } catch (error) {
+      setPostData((current) => current ? {
+        ...current,
+        likedByCurrentUser: previousLiked,
+        _count: { ...current._count, likes: previousCount },
+      } : current);
       toast.error(
         error instanceof Error ? error.message : 'いいねを更新できませんでした。',
       );
@@ -184,8 +196,15 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
 
   const handleToggleBookmark = async () => {
     if (isUpdatingBookmark) return;
+    const previousBookmarked = postData.bookmarkedByCurrentUser;
+    const previousCount = postData._count.bookmarks;
+    setIsUpdatingBookmark(true);
+    setPostData((current) => current ? {
+      ...current,
+      bookmarkedByCurrentUser: !previousBookmarked,
+      _count: { ...current._count, bookmarks: previousCount + (previousBookmarked ? -1 : 1) },
+    } : current);
     try {
-      setIsUpdatingBookmark(true);
       const result = await fetchToggleBookmark(postId);
       setPostData((current) =>
         current
@@ -205,6 +224,11 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
           : 'お気に入りから外しました。',
       );
     } catch (error) {
+      setPostData((current) => current ? {
+        ...current,
+        bookmarkedByCurrentUser: previousBookmarked,
+        _count: { ...current._count, bookmarks: previousCount },
+      } : current);
       toast.error(
         error instanceof Error
           ? error.message

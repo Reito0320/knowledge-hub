@@ -21,6 +21,8 @@ const FavoriteUserButton = ({
   const toggleFavorite = async () => {
     if (isUpdating) return;
     setIsUpdating(true);
+    const previousFavorited = favorited;
+    setFavorited(!previousFavorited);
 
     try {
       const response = await fetch(`/api/users/${userId}/favorite`, {
@@ -41,6 +43,7 @@ const FavoriteUserButton = ({
           : `${userName}さんをお気に入りから外しました。`,
       );
     } catch (error) {
+      setFavorited(previousFavorited);
       toast.error(
         error instanceof Error
           ? error.message
