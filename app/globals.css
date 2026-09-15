@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Code blocks use a dark background; token colors remain readable in either OS theme. */
+pre .hljs-keyword, pre .hljs-selector-tag { color: #c792ea; }
+pre .hljs-string, pre .hljs-regexp, pre .hljs-template-tag { color: #c3e88d; }
+pre .hljs-number, pre .hljs-literal { color: #f78c6c; }
+pre .hljs-title, pre .hljs-section { color: #82aaff; }
+pre .hljs-type, pre .hljs-built_in, pre .hljs-title.class_ { color: #ffcb6b; }
+pre .hljs-variable, pre .hljs-params, pre .hljs-attr, pre .hljs-property { color: #f4bfca; }
+pre .hljs-comment, pre .hljs-quote { color: #a0aebf; font-style: italic; }
+pre .hljs-meta, pre .hljs-symbol, pre .hljs-bullet { color: #89ddff; }
+pre .hljs-addition { color: #c3e88d; }
+pre .hljs-deletion { color: #ff8f99; }

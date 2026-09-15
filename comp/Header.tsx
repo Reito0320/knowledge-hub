@@ -532,10 +532,13 @@ const Header = () => {
                   type="button"
                   onClick={handleSignOut}
                   disabled={isSigningOut}
-                  className="flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-[#DDE4EC] bg-white px-3 text-sm font-semibold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#254F8F]/5 hover:text-[#254F8F] disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label={isSigningOut ? 'サインアウト処理中' : 'サインアウト'}
+                  aria-busy={isSigningOut}
+                  title="サインアウト"
+                  className="flex size-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-transparent text-sm font-semibold text-[#566477] transition hover:border-[#254F8F]/30 hover:bg-[#254F8F]/5 hover:text-[#254F8F] focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:border-[#DDE4EC] sm:bg-white sm:px-3"
                 >
                   <FiLogOut aria-hidden="true" className="size-4" />
-                  <span>{isSigningOut ? '処理中...' : 'サインアウト'}</span>
+                  <span className="hidden sm:inline">{isSigningOut ? '処理中...' : 'サインアウト'}</span>
                 </button>
                 <div className="hidden min-w-0 max-w-48 text-right sm:block">
                   <p className="truncate text-sm font-bold text-[#4B4E54]">

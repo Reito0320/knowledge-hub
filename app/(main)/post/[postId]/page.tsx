@@ -8,6 +8,7 @@ import {
   type PostDetailData,
 } from '@/app/api/post/[postId]/fetch';
 import MarkdownRenderer from '@/comp/MarkdownRender';
+import CopyArticleButton from '@/comp/CopyArticleButton';
 import Skeleton from '@/comp/Skeleton';
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
@@ -250,6 +251,7 @@ const PostDetailPage = ({ params }: PostDetailPageProps) => {
             <FiArrowLeft aria-hidden="true" />
             自分の記事へ戻る
           </Link>
+          <CopyArticleButton title={postData.title} excerpt={postData.excerpt} content={postData.content} />
           {postData.canEdit && (
             <Link
               href={`/post/${postId}/edit`}

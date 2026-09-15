@@ -1,6 +1,8 @@
 import CodeBlock from './CodeBlock';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeRaw from 'rehype-raw';
 
@@ -26,8 +28,8 @@ type MarkdownRendererProps = {
 const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
+      remarkPlugins={[remarkGfm, remarkBreaks]}
+      rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema], [rehypeHighlight, { detect: true }]]}
       components={{
         h1: ({ children }) => (
           <h1 className="mb-5 mt-10 border-b border-[#E7D8CB] pb-3 text-3xl font-bold text-[#3E4652]">
@@ -77,8 +79,8 @@ const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
             </a>
           );
         },
-        code: ({ children }) => (
-          <code className="rounded bg-[#EEF1F4] px-1.5 py-0.5 font-mono text-sm text-[#B24A62]">
+        code: ({ children, className }) => (
+          <code className={`rounded bg-[#EEF1F4] px-1.5 py-0.5 font-mono text-sm text-[#B24A62] ${className ?? ''}`}>
             {children}
           </code>
         ),
@@ -101,10 +103,16 @@ const MarkdownRenderer = ({ content }: MarkdownRendererProps) => {
           </td>
         ),
         hr: () => <hr className="my-8 border-[#DDE4EC]" />,
-        span: ({ node, children }) => {
+        details: ({ children }) => (
+          <details className="my-5 rounded-xl border border-[#DED4CA] bg-[#FCFAF7] px-5 py-3">{children}</details>
+        ),
+        summary: ({ children }) => (
+          <summary className="cursor-pointer font-semibold text-[#75492E] focus-visible:outline-2">{children}</summary>
+        ),
+        span: ({ node, children, className }) => {
           const color = node?.properties?.dataColor;
           const colorName = typeof color === 'string' ? color : '';
-          return <span className={colorClasses[colorName]}>{children}</span>;
+          return <span className={colorClasses[colorName] ?? className}>{children}</span>;
         },
       }}
     >

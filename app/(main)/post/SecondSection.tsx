@@ -21,6 +21,7 @@ export type SelectedTag =
     };
 
 import MarkdownRenderer from '@/comp/MarkdownRender';
+import CopyArticleButton from '@/comp/CopyArticleButton';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import { indentMarkdownList } from '@/lib/markdown/indent-list';
 import { continueMarkdownList } from '@/lib/markdown/continue-list';
@@ -80,7 +81,8 @@ type MarkdownTool =
   | 'link'
   | 'image'
   | 'code'
-  | 'codeBlock';
+  | 'codeBlock'
+  | 'toggle';
 
 const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
   const [title, setTitle] = useState<string>(initialData?.title ?? '');
@@ -236,6 +238,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
     { label: '画像', icon: FiImage, tool: 'image' },
     { label: 'インラインコード', icon: FiCode, tool: 'code' },
     { label: 'コードブロック', icon: FiTerminal, tool: 'codeBlock' },
+    { label: '折りたたみ', icon: FiChevronDown, tool: 'toggle' },
   ];
 
   const editorScrollRef = useRef({ top: 0, left: 0 });
@@ -306,6 +309,20 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
           .join('\n');
         nextSelectionStart = selectedText ? 0 : 2;
         nextSelectionEnd = selectedText ? replacement.length : 2 + text.length;
+        break;
+      }
+      case 'toggle': {
+        // summaryはHTMLなので、選択文字がタグや閉じタグとして解釈されないようにする。
+        const toggleTitle = (selectedText || '折りたたみのタイトル')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\r?\n/g, ' ');
+        const text = '折りたたむ内容';
+        const opening = `${selectionStart > 0 ? '\n\n' : ''}<details>\n<summary>${toggleTitle}</summary>\n\n`;
+        replacement = `${opening}${text}\n\n</details>\n\n`;
+        nextSelectionStart = opening.length;
+        nextSelectionEnd = opening.length + text.length;
         break;
       }
       case 'link': {
@@ -524,7 +541,7 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-b border-[#DDE4EC] bg-[#F8FAFC] px-4 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#DDE4EC] bg-[#F8FAFC] px-4 sm:px-6">
           <div className="flex h-14 items-end gap-1">
             <button
               type="button"
@@ -552,6 +569,9 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
               <FiEye aria-hidden="true" />
               プレビュー
             </button>
+          </div>
+          <div className="ml-auto py-2">
+            <CopyArticleButton title={title} excerpt={excerpt} content={content} />
           </div>
         </div>
 
