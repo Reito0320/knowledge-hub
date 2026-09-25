@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -10,19 +9,19 @@ const mocks = vi.hoisted(() => ({
   adminUserGlobalSignOut: vi.fn(),
 }));
 
-vi.mock('@/lib/auth/get-current-admin', () => ({
+vi.mock('@/server/src/auth/request-user', () => ({
   getCurrentAdmin: mocks.getCurrentAdmin,
 }));
 
-vi.mock('@/lib/AWS/admin-delete-software-token', () => ({
+vi.mock('@/server/src/infrastructure/aws/admin-delete-software-token', () => ({
   adminDeleteSoftwareToken: mocks.adminDeleteSoftwareToken,
 }));
 
-vi.mock('@/lib/AWS/admin-user-global-sign-out', () => ({
+vi.mock('@/server/src/infrastructure/aws/admin-user-global-sign-out', () => ({
   adminUserGlobalSignOut: mocks.adminUserGlobalSignOut,
 }));
 
-vi.mock('@/lib/prisma', () => ({
+vi.mock('@/server/src/infrastructure/prisma', () => ({
   prisma: {
     user: {
       findUnique: mocks.findUniqueUser,
@@ -34,7 +33,8 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-import { POST } from '@/app/api/admin/users/[userId]/mfa-recovery/route';
+import { AdminUsersUseridMfaRecoveryController } from '@/server/src/controllers/admin/users/[userId]/mfa-recovery/controller';
+const { POST } = new AdminUsersUseridMfaRecoveryController();
 
 const createRequest = (
   body: unknown = {
@@ -42,7 +42,7 @@ const createRequest = (
     reason: '本人と上長へ端末紛失を確認済み',
   },
 ) =>
-  new NextRequest('http://localhost/api/admin/users/member-1/mfa-recovery', {
+  new Request('http://localhost/api/admin/users/member-1/mfa-recovery', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

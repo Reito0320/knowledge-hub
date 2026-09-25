@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -9,20 +8,21 @@ const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
 }));
 
-vi.mock('@/lib/auth/get-current-admin', () => ({
+vi.mock('@/server/src/auth/request-user', () => ({
   getCurrentAdmin: mocks.getCurrentAdmin,
 }));
 
-vi.mock('@/lib/prisma', () => ({
+vi.mock('@/server/src/infrastructure/prisma', () => ({
   prisma: {
     $transaction: mocks.transaction,
   },
 }));
 
-import { PATCH } from '@/app/api/admin/users/[userId]/role/route';
+import { AdminUsersUseridRoleController } from '@/server/src/controllers/admin/users/[userId]/role/controller';
+const { PATCH } = new AdminUsersUseridRoleController();
 
 const createRequest = (role: string) =>
-  new NextRequest('http://localhost/api/admin/users/user-2/role', {
+  new Request('http://localhost/api/admin/users/user-2/role', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ role }),

@@ -6,7 +6,6 @@
 //         ↓
 // 返ってきたStatusや、呼ばれた関数を確認する
 
-import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /* 最初にmocksを定義しておくことで、vi.mockの中でのホイスティングによる変数errorをなくせる。 */
@@ -18,11 +17,11 @@ const mocks = vi.hoisted(() => ({
   getVerifiedCognitoSession: vi.fn(),
 }));
 
-vi.mock('@/lib/AWS/s3-presigned-url', () => ({
+vi.mock('@/server/src/infrastructure/aws/s3-presigned-url', () => ({
   createProfileImageViewUrl: vi.fn(),
 }));
 
-vi.mock('@/lib/prisma', () => ({
+vi.mock('@/server/src/infrastructure/prisma', () => ({
   prisma: {
     user: {
       findUnique: mocks.findUniqueUser,
@@ -30,18 +29,21 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-vi.mock('@/lib/auth/cognito-session', () => ({
+vi.mock('@/server/src/auth/request-user', () => ({
   COGNITO_ACCESS_TOKEN_COOKIE: 'cognito_access_token',
   getVerifiedCognitoSession: mocks.getVerifiedCognitoSession,
   verifyActiveCognitoAccessToken: mocks.verifyActiveToken,
 }));
 
-vi.mock('@/lib/cookie', () => ({
+vi.mock('@/server/src/http/cookie', () => ({
   deleteCookie: mocks.deleteCookie,
   setCookie: mocks.setCookie,
 }));
 
-import { POST } from '@/app/api/auth/session/route';
+import { AuthSessionController } from '@/server/src/controllers/auth/session/controller';
+const controller = new AuthSessionController();
+Object.assign(controller, { auth: { verifyAccessToken: mocks.verifyActiveToken } });
+const POST = controller.POST.bind(controller);
 
 describe('POST /api/auth/session', () => {
   beforeEach(() => {
@@ -66,7 +68,7 @@ describe('POST /api/auth/session', () => {
 
   it('Authorization Headerがなければ401を返す', async () => {
     /* ここでclientのfetchをしているような感じ リクエスト */
-    const request = new NextRequest('http://localhost/api/auth/session', {
+    const request = new Request('http://localhost/api/auth/session', {
       method: 'POST',
     });
     /* ここでapi/route.tsの動きをしている。POSTリクエストの関数を実行する感じ。 レスポンス */
@@ -80,7 +82,7 @@ describe('POST /api/auth/session', () => {
   });
 
   it('認証成功時にCognito Access TokenをCookieへ保存する', async () => {
-    const request = new NextRequest('http://localhost/api/auth/session', {
+    const request = new Request('http://localhost/api/auth/session', {
       method: 'POST',
       headers: {
         Authorization: 'Bearer test-access-token',
@@ -106,7 +108,7 @@ describe('POST /api/auth/session', () => {
   });
 
   it('保持を選んだ場合もCookieの期限をJWTの期限内にする', async () => {
-    const response = await POST(new NextRequest('http://localhost/api/auth/session', {
+    const response = await POST(new Request('http://localhost/api/auth/session', {
       method: 'POST',
       headers: { Authorization: 'Bearer test-access-token', 'X-Remember-Me': 'true' },
     }));
@@ -119,7 +121,7 @@ describe('POST /api/auth/session', () => {
   it('DBにUserが存在しなければ403を返す', async () => {
     mocks.findUniqueUser.mockResolvedValue(null);
 
-    const request = new NextRequest('http://localhost/api/auth/session', {
+    const request = new Request('http://localhost/api/auth/session', {
       method: 'POST',
       headers: {
         Authorization: 'Bearer test-access-token',
@@ -136,7 +138,7 @@ describe('POST /api/auth/session', () => {
   it('Cognitoで失効済みのTokenをCookieへ保存しない', async () => {
     mocks.verifyActiveToken.mockResolvedValue(null);
 
-    const request = new NextRequest('http://localhost/api/auth/session', {
+    const request = new Request('http://localhost/api/auth/session', {
       method: 'POST',
       headers: { Authorization: 'Bearer revoked-token' },
     });
@@ -153,7 +155,7 @@ describe('POST /api/auth/session', () => {
       status: 'PENDING',
     });
 
-    const request = new NextRequest('http://localhost/api/auth/session', {
+    const request = new Request('http://localhost/api/auth/session', {
       method: 'POST',
       headers: { Authorization: 'Bearer test-access-token' },
     });
@@ -172,7 +174,7 @@ describe('POST /api/auth/session', () => {
       status: 'SUSPENDED',
     });
 
-    const request = new NextRequest('http://localhost/api/auth/session', {
+    const request = new Request('http://localhost/api/auth/session', {
       method: 'POST',
       headers: { Authorization: 'Bearer test-access-token' },
     });

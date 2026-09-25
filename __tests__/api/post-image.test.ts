@@ -7,22 +7,23 @@ const mocks = vi.hoisted(() => ({
   createViewUrl: vi.fn(),
 }));
 
-vi.mock('@/lib/auth/get-current-user', () => ({
+vi.mock('@/server/src/auth/request-user', () => ({
   getCurrentUser: mocks.getCurrentUser,
 }));
 
-vi.mock('@/lib/AWS/s3-presigned-url', () => ({
+vi.mock('@/server/src/infrastructure/aws/s3-presigned-url', () => ({
   createPostImageViewUrl: mocks.createViewUrl,
 }));
 
-vi.mock('@/lib/prisma', () => ({
+vi.mock('@/server/src/infrastructure/prisma', () => ({
   prisma: {
     user: { findUnique: mocks.findUniqueUser },
     post: { findMany: mocks.findManyPosts },
   },
 }));
 
-import { GET } from '@/app/api/post/images/[ownerId]/[fileName]/route';
+import { PostImagesOwneridFilenameController } from '@/server/src/controllers/post/images/[ownerId]/[fileName]/controller';
+const { GET } = new PostImagesOwneridFilenameController();
 
 const fileName = '550e8400-e29b-41d4-a716-446655440000.png';
 const context = (ownerId: string) => ({

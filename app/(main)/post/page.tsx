@@ -1,6 +1,6 @@
 'use client';
-import { fetchGETPostData, type PostListItem } from '@/app/api/post/fetch';
-import { fetchDeletePost } from '@/app/api/post/[postId]/fetch';
+import { fetchGETPostData, type PostListItem } from '@/lib/api/post/fetch';
+import { fetchDeletePost } from '@/lib/api/post/[postId]/fetch';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {

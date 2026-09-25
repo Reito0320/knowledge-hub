@@ -1,0 +1,21 @@
+[Unit]
+Description=Knowledge Hub NestJS API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=knowledge-hub
+Group=knowledge-hub
+WorkingDirectory=/opt/knowledge-hub
+EnvironmentFile=/etc/knowledge-hub/api.env
+ExecStart=/usr/bin/node /opt/knowledge-hub/server/dist/main.mjs
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

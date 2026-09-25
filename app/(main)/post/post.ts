@@ -1,4 +1,4 @@
-import { PostListItem } from '@/app/api/post/fetch';
+import { PostListItem } from '@/lib/api/post/fetch';
 
 export const postStatusCounter = (posts: PostListItem[]) => {
   const publishedCount = posts.filter(

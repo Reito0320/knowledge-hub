@@ -4,7 +4,7 @@ import PostEditor from '@/app/(main)/post/_components/PostEditor';
 import {
   fetchGetTargetPost,
   type PostDetailData,
-} from '@/app/api/post/[postId]/fetch';
+} from '@/lib/api/post/[postId]/fetch';
 import Skeleton from '@/comp/Skeleton';
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';

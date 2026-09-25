@@ -1,6 +1,5 @@
 'use client';
 
-import { signOut } from 'aws-amplify/auth';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
@@ -22,116 +21,25 @@ import {
   FiUserPlus,
   FiUsers,
 } from 'react-icons/fi';
-import {
-  fetchDeleteSession,
-  fetchGetSession,
-  type SessionUser,
-} from '@/app/api/auth/session/fetch';
+import { useSession } from '@/lib/auth/session-context';
+import { useNotifications } from '@/lib/header/use-notifications';
 import { toast } from 'react-toastify';
-import {
-  requestProfileImageUpload,
-  saveProfileImageObjectKey,
-  uploadProfileImageToS3,
-} from '@/app/api/users/profile/image-upload/fetch';
-import { fetchPatchUserProfile } from '@/app/api/users/profile/fetch';
-import { AUTH_SESSION_CHANGED_EVENT } from '@/lib/auth/auth-session-event';
-import {
-  fetchMarkNotificationsRead,
-  fetchNotifications,
-  type NewPostNotification,
-} from '@/app/api/notifications/fetch';
-
-type DepartmentOption = { id: string; name: string };
+import { useProfileEditor } from '@/lib/header/use-profile-editor';
 
 const Header = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [isCheckingSession, setIsCheckingSession] = useState<boolean>(true);
-  const [isSigningOut, setIsSigningOut] = useState<boolean>(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [hasImageError, setHasImageError] = useState<boolean>(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
-  const [profilePreviewUrl, setProfilePreviewUrl] = useState<string | null>(
-    null,
-  );
-  const [profileNotice, setProfileNotice] = useState('');
-  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
-  const [profileName, setProfileName] = useState('');
-  const [profileJobTitle, setProfileJobTitle] = useState('');
-  const [profileBio, setProfileBio] = useState('');
-  const [notifications, setNotifications] = useState<NewPostNotification[]>([]);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const { user, setUser, isCheckingSession, isSigningOut, signOut } = useSession();
+  const {
+    isSavingProfile, hasImageError, isProfileModalOpen, profilePreviewUrl, profileNotice,
+    departments, selectedDepartmentId, profileName, profileJobTitle, profileBio,
+    setHasImageError, setIsProfileModalOpen, setSelectedDepartmentId, setProfileName,
+    setProfileJobTitle, setProfileBio, handleProfileImageChange, handleSaveProfileImage,
+  } = useProfileEditor(user, setUser);
+  const { notifications, unreadNotificationCount, markNotificationRead, markAllNotificationsRead } = useNotifications(user?.id, pathname);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const profileFileInputRef = useRef<HTMLInputElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const checkSession = async () => {
-      setIsCheckingSession(true);
-
-      try {
-        const sessionUser = await fetchGetSession();
-        setUser(sessionUser);
-        setSelectedDepartmentId(sessionUser?.department?.id ?? '');
-        setProfileName(sessionUser?.name ?? '');
-        setProfileJobTitle(sessionUser?.jobTitle ?? '');
-        setProfileBio(sessionUser?.bio ?? '');
-        setHasImageError(false);
-      } catch (error) {
-        console.error('Sessionの確認に失敗しました:', error);
-        setUser(null);
-      } finally {
-        setIsCheckingSession(false);
-      }
-    };
-
-    const handleAuthSessionChanged = () => {
-      void checkSession();
-    };
-
-    void checkSession();
-    window.addEventListener(
-      AUTH_SESSION_CHANGED_EVENT,
-      handleAuthSessionChanged,
-    );
-
-    return () => {
-      window.removeEventListener(
-        AUTH_SESSION_CHANGED_EVENT,
-        handleAuthSessionChanged,
-      );
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-
-    let isActive = true;
-    const refreshNotifications = async () => {
-      try {
-        const data = await fetchNotifications();
-        if (!isActive) return;
-        setNotifications(data.notifications);
-        setUnreadNotificationCount(data.unreadCount);
-      } catch (error) {
-        console.error('通知の取得に失敗しました:', error);
-      }
-    };
-
-    void refreshNotifications();
-    const intervalId = window.setInterval(refreshNotifications, 60_000);
-    const handleFocus = () => void refreshNotifications();
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      isActive = false;
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [pathname, user]);
 
   useEffect(() => {
     if (!isNotificationOpen) return;
@@ -156,147 +64,16 @@ const Header = () => {
     };
   }, [isNotificationOpen]);
 
-  useEffect(() => {
-    if (!isProfileModalOpen) return;
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsProfileModalOpen(false);
-    };
-
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isProfileModalOpen]);
-
-  useEffect(() => {
-    if (!isProfileModalOpen || departments.length > 0) return;
-
-    void fetch('/api/departments')
-      .then((response) => response.json())
-      .then((data: { departments: DepartmentOption[] }) =>
-        setDepartments(data.departments),
-      )
-      .catch((error) =>
-        console.error('部署一覧を取得できませんでした:', error),
-      );
-  }, [departments.length, isProfileModalOpen]);
-
-  useEffect(() => {
-    return () => {
-      if (profilePreviewUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(profilePreviewUrl);
-      }
-    };
-  }, [profilePreviewUrl]);
-
-  const handleProfileImageChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setProfileNotice('画像ファイルを選択してください。');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setProfileNotice('画像は5MB以下にしてください。');
-      return;
-    }
-
-    setProfileImageFile(file);
-    setProfilePreviewUrl(URL.createObjectURL(file));
-    setProfileNotice('プレビューを確認して保存してください。');
-  };
-
-  const handleSaveProfileImage = async () => {
-    if (isSavingProfile) return;
-    setIsSavingProfile(true);
-
-    try {
-      const data = await fetchPatchUserProfile(
-        profileName,
-        profileJobTitle,
-        profileBio,
-        selectedDepartmentId,
-      );
-      setUser(data.user);
-
-      if (profileImageFile) {
-        // userがinputした画像データを使って、S3の署名付きURLを取得する
-        const uploadData = await requestProfileImageUpload(profileImageFile);
-
-        if (!uploadData)
-          throw new Error('S3から署名付きURLを取得できませんでした。');
-
-        await uploadProfileImageToS3(uploadData.uploadUrl, profileImageFile);
-
-        const photoUrl = await saveProfileImageObjectKey(uploadData.objectKey);
-
-        setUser({
-          ...data.user,
-          photoUrl,
-        });
-      }
-      // 保存後は一時プレビューではなく、新しい署名付きURLを表示元にする。
-      setProfilePreviewUrl(null);
-      setProfileImageFile(null);
-      setHasImageError(false);
-      toast.success('プロフィールを更新しました。');
-      setIsProfileModalOpen(false);
-    } catch (error) {
-      console.error(error);
-      setProfileNotice(
-        error instanceof Error
-          ? error.message
-          : 'プロフィールを更新できませんでした。',
-      );
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
   const handleSignOut = async () => {
-    setIsSigningOut(true);
     try {
-      await fetchDeleteSession();
       await signOut();
-      setUser(null);
       toast.success('サインアウトしました。');
       router.replace('/login');
       router.refresh();
     } catch (error) {
       console.error('サインアウトに失敗しました:', error);
       toast.error('サインアウトできませんでした。');
-    } finally {
-      setIsSigningOut(false);
     }
-  };
-  const markNotificationRead = (notificationId: string) => {
-    const target = notifications.find(({ id }) => id === notificationId);
-    if (!target || target.readAt) return;
-
-    setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === notificationId
-          ? { ...notification, readAt: new Date().toISOString() }
-          : notification,
-      ),
-    );
-    setUnreadNotificationCount((current) => Math.max(0, current - 1));
-    void fetchMarkNotificationsRead(notificationId).catch((error) => {
-      console.error('通知を既読にできませんでした:', error);
-    });
-  };
-
-  const markAllNotificationsRead = () => {
-    if (unreadNotificationCount === 0) return;
-    const readAt = new Date().toISOString();
-    setNotifications((current) =>
-      current.map((notification) => ({ ...notification, readAt })),
-    );
-    setUnreadNotificationCount(0);
-    void fetchMarkNotificationsRead().catch((error) => {
-      console.error('通知を既読にできませんでした:', error);
-    });
   };
   const initials = user?.name.trim().slice(0, 1).toUpperCase() || 'U';
   const navigationItems = [
@@ -552,13 +329,6 @@ const Header = () => {
                   type="button"
                   onClick={() => {
                     setIsProfileModalOpen(true);
-                    setProfileNotice('');
-                    setProfilePreviewUrl(null);
-                    setProfileImageFile(null);
-                    setProfileName(user.name);
-                    setProfileJobTitle(user.jobTitle ?? '');
-                    setProfileBio(user.bio ?? '');
-                    setSelectedDepartmentId(user.department?.id ?? '');
                   }}
                   aria-label={`${user.name}のプロフィール設定を開く`}
                   className="flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#254F8F]"
@@ -572,7 +342,7 @@ const Header = () => {
                         fill
                         sizes="40px"
                         className="object-cover"
-                        onError={() => setHasImageError(true)}
+                        onError={() => setHasImageError()}
                       />
                     ) : (
                       <span aria-hidden="true">{initials}</span>

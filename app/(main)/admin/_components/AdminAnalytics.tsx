@@ -1,4 +1,4 @@
-import type { AdminAnalyticsData } from '@/lib/admin/get-admin-analytics';
+import type { AdminAnalyticsData } from '@/lib/contracts/pages';
 import Link from 'next/link';
 import { FiBarChart2, FiBookmark, FiEye, FiFileText, FiHeart, FiMessageCircle, FiTrendingUp, FiUsers } from 'react-icons/fi';
 

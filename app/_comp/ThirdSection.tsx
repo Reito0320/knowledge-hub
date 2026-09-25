@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { FiHeart, FiMessageCircle } from 'react-icons/fi';
-import type { HomePost } from '@/lib/home/get-home-data';
+import type { HomePost } from '@/lib/contracts/pages';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import UserAvatar from '@/comp/UserAvatar';
 

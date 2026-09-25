@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -9,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   deleteImageObject: vi.fn(),
 }));
 
-vi.mock('@/lib/auth/get-current-user', () => ({
+vi.mock('@/server/src/auth/request-user', () => ({
   getCurrentUser: mocks.getCurrentUser,
 }));
 
@@ -19,14 +18,14 @@ vi.mock('@/lib/AWS/profile-image-upload', () => ({
   checkFileSize: vi.fn(),
 }));
 
-vi.mock('@/lib/AWS/s3-presigned-url', () => ({
+vi.mock('@/server/src/infrastructure/aws/s3-presigned-url', () => ({
   createProfileImageUploadUrl: vi.fn(),
   createProfileImageViewUrl: mocks.createViewUrl,
   deleteProfileImageObject: mocks.deleteImageObject,
   PROFILE_IMAGE_UPLOAD_URL_EXPIRES_IN: 60,
 }));
 
-vi.mock('@/lib/prisma', () => ({
+vi.mock('@/server/src/infrastructure/prisma', () => ({
   prisma: {
     user: {
       findUnique: mocks.findUniqueUser,
@@ -35,14 +34,15 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-import { PATCH } from '@/app/api/users/profile/image-upload/route';
+import { UsersProfileImageUploadController } from '@/server/src/controllers/users/profile/image-upload/controller';
+const { PATCH } = new UsersProfileImageUploadController();
 
 const userId = 'user-123';
 const previousObjectKey = `profile-images/${userId}/previous.png`;
 const nextObjectKey = `profile-images/${userId}/next.png`;
 
 const createRequest = (objectKey: string) =>
-  new NextRequest('http://localhost/api/users/profile/image-upload', {
+  new Request('http://localhost/api/users/profile/image-upload', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ objectKey }),

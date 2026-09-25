@@ -6,7 +6,7 @@ import {
   fetchTogglePostLike,
   fetchToggleBookmark,
   type PostDetailData,
-} from '@/app/api/post/[postId]/fetch';
+} from '@/lib/api/post/[postId]/fetch';
 import MarkdownRenderer from '@/comp/MarkdownRender';
 import CopyArticleButton from '@/comp/CopyArticleButton';
 import Skeleton from '@/comp/Skeleton';

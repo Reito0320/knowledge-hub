@@ -3,9 +3,11 @@
 import '@/lib/AWS/cognito';
 import { returnPathFromSearch } from '@/lib/auth/return-path';
 import { restoreAppSession } from '@/lib/auth/restore';
+import { useSession } from '@/lib/auth/session-context';
 import { useEffect } from 'react';
 
 const AmplifyProvider = ({ children }: { children: React.ReactNode }) => {
+  const { refreshSession } = useSession();
   useEffect(() => {
     let disposed = false;
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
@@ -16,6 +18,8 @@ const AmplifyProvider = ({ children }: { children: React.ReactNode }) => {
         // fetchAuthSessionは必要に応じてAmplify側でTokenを更新する。
         const expiresAt = await restoreAppSession(forceRefresh);
         if (disposed || !expiresAt) return;
+        await refreshSession();
+        if (disposed) return;
 
         // Access Token失効の1分前にHttpOnly Cookieも更新する。
         const refreshDelay = Math.max(
@@ -43,7 +47,7 @@ const AmplifyProvider = ({ children }: { children: React.ReactNode }) => {
       window.removeEventListener('focus', onFocus);
       if (refreshTimer) clearTimeout(refreshTimer);
     };
-  }, []);
+  }, [refreshSession]);
 
   return <>{children}</>;
 };

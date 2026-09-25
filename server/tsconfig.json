@@ -1,0 +1,23 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "incremental": false,
+    "plugins": [],
+    "paths": {
+      "@/*": [
+        "../*"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "*.test.ts",
+    "../__tests__/api/**/*.test.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
