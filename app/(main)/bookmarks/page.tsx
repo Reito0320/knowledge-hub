@@ -1,9 +1,7 @@
-import { getCurrentUser } from '@/lib/auth/get-current-user';
-import { prisma } from '@/lib/prisma';
+import { fetchServerApi } from '@/lib/api/server';
+import type { BookmarksData } from '@/lib/contracts/pages';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { connection } from 'next/server';
 import {
   FiBookmark,
   FiBriefcase,
@@ -13,7 +11,6 @@ import {
   FiTag,
 } from 'react-icons/fi';
 import { AnimatedList, AnimatedListItem } from '@/comp/AnimatedList';
-import { createOptionalProfileImageViewUrl } from '@/lib/AWS/s3-presigned-url';
 import Image from 'next/image';
 import UserAvatar from '@/comp/UserAvatar';
 
@@ -24,77 +21,9 @@ const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
 });
 
 const BookmarksPage = async () => {
-  // Cookieを読む認証ページなので、Build時ではなくRequest時に描画する。
-  await connection();
-  const userId = await getCurrentUser();
-  if (!userId) redirect('/login');
-
-  // Server Componentから直接取得し、初期表示時のクライアントAPI通信を省く。
-  const [bookmarks, favoriteRecords] = await Promise.all([
-    prisma.bookmark.findMany({
-      where: { userId, post: { status: 'PUBLISHED' } },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        createdAt: true,
-        post: {
-          select: {
-            id: true,
-            title: true,
-            excerpt: true,
-            category: true,
-            author: { select: { name: true, photoObjectKey: true } },
-            postTags: {
-              select: { tag: { select: { id: true, name: true } } },
-            },
-          },
-        },
-      },
-    }),
-    prisma.userFavorite.findMany({
-      where: { followerId: userId },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        createdAt: true,
-        favoriteUser: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            jobTitle: true,
-            photoObjectKey: true,
-            status: true,
-            department: { select: { name: true } },
-          },
-        },
-      },
-    }),
-  ]);
-
-  const favoriteUsers = await Promise.all(
-    favoriteRecords.map(async ({ favoriteUser, createdAt }) => ({
-      ...favoriteUser,
-      createdAt,
-      photoUrl: await createOptionalProfileImageViewUrl(
-        favoriteUser.photoObjectKey,
-      ),
-    })),
-  );
-
-  const serializedBookmarks = await Promise.all(
-    bookmarks.map(async (bookmark) => ({
-      ...bookmark,
-      post: {
-        ...bookmark.post,
-        author: {
-          name: bookmark.post.author.name,
-          photoUrl: await createOptionalProfileImageViewUrl(
-            bookmark.post.author.photoObjectKey,
-          ),
-        },
-      },
-    })),
-  );
-
+  const data = await fetchServerApi<BookmarksData>('/bookmarks');
+  const { favoriteUsers, bookmarks } = data;
+  const serializedBookmarks = bookmarks;
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-[#F7F6F3] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
       <div className="mx-auto max-w-5xl">
@@ -184,7 +113,7 @@ const BookmarksPage = async () => {
                     {post.category === 'TECH' ? '技術ブログ' : '業務・カルチャー'}
                   </span>
                   <FiClock aria-hidden="true" />
-                  {dateFormatter.format(createdAt)}に追加
+                  {dateFormatter.format(new Date(createdAt))}に追加
                 </div>
                 <h2 className="mt-3 text-lg font-bold text-[#1E3A5F] hover:text-[#B26936]">
                   <Link href={`/post/${post.id}`}>{post.title}</Link>

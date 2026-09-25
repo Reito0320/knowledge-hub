@@ -7,26 +7,13 @@ type TagSuggestion = {
   slug: string;
 };
 
-// 既存タグと、入力欄から新しく追加したタグをtypeで判別する。
-export type SelectedTag =
-  | {
-      type: 'existing';
-      id: string;
-      name: string;
-      slug: string;
-    }
-  | {
-      type: 'new';
-      name: string;
-    };
-
 import MarkdownRenderer from '@/comp/MarkdownRender';
 import CopyArticleButton from '@/comp/CopyArticleButton';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
 import { indentMarkdownList } from '@/lib/markdown/indent-list';
 import { continueMarkdownList } from '@/lib/markdown/continue-list';
-import { uploadPostImage } from '@/app/api/post/images/fetch';
-import type { PostVisibility } from '@/lib/post/post-visibility';
+import { uploadPostImage } from '@/lib/api/post/images/fetch';
+import { usePostEditor } from '@/lib/post/editor/post-editor-context';
 import { validatePostForPublish } from '@/lib/post/validate-post-for-publish';
 import VisibilitySelector from './_components/VisibilitySelector';
 import TextColorPicker, { type MarkdownTextColor } from './_components/TextColorPicker';
@@ -58,20 +45,6 @@ import {
 const normalizeTagName = (name: string) =>
   name.trim().normalize('NFKC').toLocaleLowerCase();
 
-export type PostEditorInitialData = {
-  title: string;
-  excerpt: string;
-  content: string;
-  category: 'TECH' | 'BUSINESS';
-  visibility: PostVisibility;
-  tags: SelectedTag[];
-};
-
-type SecondSectionProps = {
-  storageKey: string;
-  initialData?: PostEditorInitialData;
-};
-
 type EditorMode = 'edit' | 'preview';
 type MarkdownTool =
   | 'heading'
@@ -84,38 +57,17 @@ type MarkdownTool =
   | 'codeBlock'
   | 'toggle';
 
-const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
-  const [title, setTitle] = useState<string>(initialData?.title ?? '');
-  const [excerpt, setExcerpt] = useState<string>(initialData?.excerpt ?? '');
-  const [content, setContent] = useState<string>(initialData?.content ?? '');
-  const [category, setCategory] = useState<'TECH' | 'BUSINESS'>(
-    initialData?.category ?? 'TECH',
-  );
-  const [visibility, setVisibility] = useState<PostVisibility>(
-    initialData?.visibility ?? 'ORGANIZATION',
-  );
+const SecondSection = () => {
+  const { draft, setTitle, setExcerpt, setContent, setCategory, setVisibility, setSelectedTagList } = usePostEditor();
+  const { title, excerpt, content, category, visibility, tags: selectedTagList } = draft;
   const [tagName, setTagName] = useState<string>('');
   const [tagSuggestList, setTagSuggestList] = useState<TagSuggestion[]>([]);
-  const [selectedTagList, setSelectedTagList] = useState<SelectedTag[]>(
-    initialData?.tags ?? [],
-  );
   const [editorMode, setEditorMode] = useState<EditorMode>('edit');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [linkEditor, setLinkEditor] = useState<{ start: number; end: number; name: string; url: string } | null>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const imageSelectionRef = useRef({ start: 0, end: 0, alt: '' });
-  const lastDispatchedDraftRef = useRef(
-    JSON.stringify({
-      title: initialData?.title ?? '',
-      excerpt: initialData?.excerpt ?? '',
-      content: initialData?.content ?? '',
-      category: initialData?.category ?? 'TECH',
-      visibility: initialData?.visibility ?? 'ORGANIZATION',
-      tags: initialData?.tags ?? [],
-    }),
-  );
-
   // 現在の入力値も正規化し、仮タグ一覧との部分一致検索に使用する。
   const normalizedTagName = normalizeTagName(tagName);
   const publishValidationItems = validatePostForPublish({ title, content });
@@ -451,38 +403,6 @@ const SecondSection = ({ storageKey, initialData }: SecondSectionProps) => {
       restoreEditorScroll();
     });
   };
-
-  useEffect(() => {
-    const cashData = JSON.stringify({
-      title,
-      excerpt,
-      content,
-      category,
-      visibility,
-      tags: selectedTagList,
-    });
-    localStorage.setItem(storageKey, cashData);
-
-    // 初期表示では通信せず、実際に入力内容が変わった時だけ自動保存を依頼する。
-    if (cashData === lastDispatchedDraftRef.current) return;
-    lastDispatchedDraftRef.current = cashData;
-    window.dispatchEvent(
-      new CustomEvent('post-editor:draft-change', {
-        detail: {
-          storageKey,
-          data: JSON.parse(cashData),
-        },
-      }),
-    );
-  }, [
-    storageKey,
-    title,
-    excerpt,
-    content,
-    category,
-    visibility,
-    selectedTagList,
-  ]);
 
   return (
     <>

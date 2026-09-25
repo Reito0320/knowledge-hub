@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
   getCurrentUser: vi.fn(),
@@ -9,11 +8,11 @@ const mocks = vi.hoisted(() => ({
   updateManyNotifications: vi.fn(),
 }));
 
-vi.mock('@/lib/auth/get-current-user', () => ({
+vi.mock('@/server/src/auth/request-user', () => ({
   getCurrentUser: mocks.getCurrentUser,
 }));
 
-vi.mock('@/lib/prisma', () => ({
+vi.mock('@/server/src/infrastructure/prisma', () => ({
   prisma: {
     user: { findUnique: mocks.findUniqueUser },
     notification: {
@@ -24,7 +23,8 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-import { GET, PATCH } from '@/app/api/notifications/route';
+import { NotificationsController } from '@/server/src/controllers/notifications/controller';
+const { GET, PATCH } = new NotificationsController();
 
 describe('/api/notifications', () => {
   beforeEach(() => {
@@ -55,7 +55,7 @@ describe('/api/notifications', () => {
       new Request('http://localhost/api/notifications', {
         method: 'PATCH',
         body: JSON.stringify({ notificationId: 'notification-1' }),
-      }) as NextRequest,
+      }) as Request,
     );
 
     expect(response.status).toBe(200);

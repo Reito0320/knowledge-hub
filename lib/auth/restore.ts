@@ -1,4 +1,4 @@
-import { fetchPostCreateSession } from '@/app/api/auth/session/fetch';
+import { fetchPostCreateSession } from '@/lib/api/auth/session/fetch';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
 /**

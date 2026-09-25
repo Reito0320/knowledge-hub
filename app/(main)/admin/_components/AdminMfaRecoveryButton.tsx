@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchPostMFAAdminRecovery } from '@/app/api/admin/users/[userId]/mfa-recovery/fetch';
+import { fetchPostMFAAdminRecovery } from '@/lib/api/admin/users/[userId]/mfa-recovery/fetch';
 import { useState } from 'react';
 import { FiAlertTriangle, FiKey, FiX } from 'react-icons/fi';
 import { toast } from 'react-toastify';

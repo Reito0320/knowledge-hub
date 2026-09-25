@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, cleanup, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PostEditorProvider } from '@/lib/post/editor/post-editor-context';
+import ToastProvider from '@/comp/ToastProvider';
+import { toast } from 'react-toastify';
 import SecondSection from '@/app/(main)/post/SecondSection';
-vi.mock('@/app/api/post/images/fetch', () => ({ uploadPostImage: vi.fn() }));
-afterEach(cleanup);
+vi.mock('@/lib/api/post/images/fetch', () => ({ uploadPostImage: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+afterEach(() => { toast.dismiss(); cleanup(); toast.clearWaitingQueue(); });
 const setup = () => {
-  render(<SecondSection storageKey="test-draft" />);
+  render(<PostEditorProvider><SecondSection /><ToastProvider /></PostEditorProvider>);
   const editor = screen.getByLabelText('記事本文') as HTMLTextAreaElement;
   fireEvent.change(editor, { target: { value: '選択した文字' } });
   editor.focus();
@@ -77,7 +81,7 @@ it('copies the current title, excerpt, and raw Markdown together', async () => {
   fireEvent.change(screen.getByLabelText(/記事の概要/), { target: { value: '概要です' } });
   fireEvent.click(screen.getByText('記事を一括コピー'));
   await waitFor(() => expect(writeText).toHaveBeenCalledWith('# テスト記事\n\n概要です\n\n選択した文字'));
-  expect(await screen.findByText('記事をコピーしました')).toBeTruthy();
+  expect(await screen.findByText('記事をコピーしました。')).toBeTruthy();
 });
 
  it('preserves existing surrounding paragraphs when inserting a toggle', () => {
@@ -88,4 +92,14 @@ it('copies the current title, excerpt, and raw Markdown together', async () => {
   fireEvent.click(screen.getByText('プレビュー'));
   expect(screen.getByText('前の本文').closest('details')).toBeNull();
   expect(screen.getByText(/さらに後の本文/).closest('details')).toBeNull();
+});
+
+it('shows an error toast when copying the article fails', async () => {
+  setup();
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+    writeText: vi.fn().mockRejectedValue(new Error('permission denied')),
+  } });
+  fireEvent.click(screen.getByText('記事を一括コピー'));
+  expect(await screen.findByText('コピーできませんでした。ブラウザのコピー権限を確認してください。')).toBeTruthy();
+  expect(screen.queryByText('記事をコピーしました。')).toBeNull();
 });

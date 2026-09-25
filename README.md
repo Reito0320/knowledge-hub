@@ -20,9 +20,10 @@
 | 用途 | 技術 |
 | --- | --- |
 | アプリケーション | Next.js 16.2.12（App Router）、React 19、TypeScript |
+| HTTP API | NestJS 12、Fastify 5 |
 | スタイリング | Tailwind CSS 4、Motion |
 | データベース | PostgreSQL、Prisma ORM 7、`@prisma/adapter-pg` |
-| 認証 | Amazon Cognito、AWS Amplify、`aws-jwt-verify` |
+| 認証 | Amazon Cognito、AWS Amplify、NestJS JwtModule / JwtService・共通 Guard |
 | 画像保存 | Amazon S3（署名付きURLでアップロード・表示） |
 | Markdown表示 | react-markdown、remark-gfm、rehype-sanitize |
 | テスト・静的解析 | Vitest、Testing Library、ESLint |
@@ -33,7 +34,7 @@ Cognitoが本人確認を担当し、PostgreSQLがアプリ内の権限・利用
 
 ### 前提条件
 
-- Node.js：Prismaの要件を満たすバージョン（`^20.19`、`^22.12`、または`>=24.0`）
+- Node.js：22.12 以上（22 LTS / 24 LTS 推奨）
 - npm
 - PostgreSQLの接続先
 - Amazon Cognitoのユーザープールとブラウザ向けアプリクライアント
@@ -70,10 +71,13 @@ ADMIN_ACCOUNT_EMAIL="admin@example.com"
 
 | 変数 | 用途 |
 | --- | --- |
+| `API_ORIGIN` | Next.js の API 転送先。既定値 `http://127.0.0.1:3001`。ビルド時に設定 |
+| `API_HOST` / `API_PORT` | NestJS の待ち受け先。既定値 `127.0.0.1` / `3001` |
 | `DATABASE_URL` | アプリが使用するPostgreSQL接続URL |
 | `DIRECT_URL` | 任意。マイグレーション・シード用接続URL。未設定時は`DATABASE_URL`を使用 |
 | `NEXT_PUBLIC_COGNITO_USER_POOL_ID` | CognitoユーザープールID |
-| `NEXT_PUBLIC_COGNITO_CLIENT_ID` | CognitoアプリクライアントID |
+| `NEXT_PUBLIC_COGNITO_CLIENT_ID` | ブラウザの Cognito アプリクライアント ID |
+| `COGNITO_USER_POOL_ID` / `COGNITO_CLIENT_ID` | API ホストの Cognito 設定。未設定時は対応する `NEXT_PUBLIC_` 値を使用 |
 | `S3_BUCKET_NAME` | 画像保存先のS3バケット名 |
 | `S3_REGION` | S3バケットのリージョン |
 | `ADMIN_ACCOUNT_EMAIL` | アプリのDBへ初回登録する際に管理者権限を付与するメールアドレス |
@@ -109,6 +113,8 @@ npm run dev
 
 [http://localhost:3000](http://localhost:3000)にアクセスします。未ログインの場合はログイン画面へ移動します。
 
+`npm run dev` は Next.js（3000）と NestJS（3001）を同時起動します。ブラウザは従来どおり `/api/...` を呼び、Next.js の rewrite が NestJS へ転送します。同一オリジンの Cookie 認証を維持するため、ブラウザから 3001 を直接呼ぶ必要はありません。
+
 ## 主な画面
 
 | パス | 内容 |
@@ -132,12 +138,17 @@ npm run dev
 
 | コマンド | 内容 |
 | --- | --- |
-| `npm run dev` | 開発サーバー起動 |
-| `npm run build` | Prisma Client生成後に本番ビルド |
-| `npm start` | ビルド済みアプリの起動 |
+| `npm run dev` | Next.js と NestJS の開発サーバーを同時起動 |
+| `npm run dev:web` / `npm run dev:api` | 各サーバーだけを開発起動（初回は `npm run build:api`） |
+| `npm run build` | NestJS と Next.js を本番ビルド |
+| `npm run build:web` | Next.js のみビルド（DB・Prisma の実行なし） |
+| `npm run build:api` / `npm run typecheck:api` | NestJS のビルド / API と API テストの型検査 |
+| `npm start` | ビルド済み Next.js と NestJS を同時起動 |
+| `npm run start:web` / `npm run start:api` | 本番サーバーを個別起動 |
 | `npm run lint` | ESLintの実行 |
 | `npm test` | Vitestをウォッチモードで実行 |
-| `npm run test:run` | テストを1回実行 |
+| `npm run test:run` | API・共通処理・UI の全テストを1回実行 |
+| `npm run test:api` | NestJS API の Vitest テストのみ実行 |
 | `npm run db:seed` | 開発用サンプルデータの投入 |
 | `npm run db:rollback` | シード用ユーザーと関連データ、未使用のシード用タグ・部署を削除 |
 
@@ -146,14 +157,44 @@ npm run dev
 ## ディレクトリ構成
 
 ```text
-app/                 画面、Route Handlers（app/api）、Server Actions
+app/                 画面と Server Component からの API 呼び出し
+lib/api/             NestJS API 呼び出し用 fetch 関数
+lib/auth/session-context.tsx  セッション共有と更新処理
+lib/post/editor/     記事の Reducer・Context・自動保存 Hook
+lib/header/          通知・プロフィール編集のカスタム Hook
+server/src/          NestJS Controller、認証 Guard、JWT 検証、DB・AWS 処理
+server/api.test.ts   NestJS を起動し Fastify inject で HTTP 境界を検証
+scripts/build-api.mjs  NestJS の独立した Node.js バンドルを生成
 comp/                ヘッダー、Markdown表示などの共通コンポーネント
-lib/                 認証、AWS連携、記事の閲覧権限などの共通処理
+lib/                 フロントエンドの状態管理、API 呼び出し、共通ドメイン処理
+lib/contracts/       Prisma に依存しない JSON API の共有型
 prisma/              DBスキーマ、マイグレーション、シード
 __tests__/           API・共通処理のテスト
 docs/                開発資料
-proxy.ts             保護対象ページへのアクセス時のトークン検証
+proxy.ts             保護対象ページへのアクセス時に NestJS へ認証を問い合わせる
 prisma.config.ts     Prisma CLIの接続先・シード設定
 ```
 
 Next.jsの実装を変更する際は、[AGENTS.md](AGENTS.md)に従い、インストール済みバージョンの`node_modules/next/dist/docs/`を確認してください。
+
+## API の構成とテスト
+
+既存の 23 Route Handler ファイル（32 メソッド）は `server/src/controllers/` の NestJS Controller へ移しました。URL・JSON・ステータス・画像リダイレクトは維持しています。Controller は標準の Web Request / Response を使い、NestJS のカスタム引数デコレーターと Interceptor が Fastify の HTTP に変換します。API は `next/server` に依存しません。
+
+JWT 検証は NestJS の `JwtModule` / `JwtService`、認証・管理者権限の検証は共通 `AuthGuard` に集約しています。JWT 発行元は Cognito を維持し、公開鍵・RS256・issuer・期限・client_id・token_use を確認したうえで Cognito の失効状態と DB の最新状態・権限を確認します。Next.js は JWT を直接検証しません。
+
+`"use server"` の Server Action はなく、従来 Server Component が直接実行していたホーム・検索・お気に入り・履歴・管理画面の DB / S3 処理を NestJS の画面用 API へ移しています。Next.js の Server Component はセッション Cookie を転送して API を取得し、画面を描画します。Next.js 側には DB 接続先・サーバー用 AWS 認証情報は不要です。
+
+API の個別ビルド・環境変数・EC2 向け systemd 設定例は [server/README.md](server/README.md) を参照してください。クラウドへの実際のデプロイは行っていません。
+
+API テストは既存の Controller 単体テストと HTTP 統合テストで構成しています。HTTP 統合テストは全ルートの認可、セッション Cookie の発行・削除・並行リクエスト間の分離、JSON・クエリ・パス変数、画像リダイレクト、エラー応答を検証します。Prisma と AWS の外部境界はモックしているため、実 DB / Cognito / S3 は不要です。実サービスへの接続を検証する E2E テストではありません。
+
+本番は Next.js と NestJS の両プロセスが必要です。別ホストへ配置する場合は Next.js のビルド時に `API_ORIGIN` を設定し、NestJS の `API_HOST` とネットワークの接続先を合わせてください。API は `.env`（存在する場合）とプロセスの環境変数を読み込みます。認証 Cookie は従来どおり `Secure`・`HttpOnly`・`SameSite=Lax` です。
+
+## クライアントの状態管理
+
+セッションは `SessionProvider` と `useSession()` で共有します。ログイン、Token 復元、プロフィール保存、サインアウトが同じ状態を更新し、古い取得結果が新しいプロフィールやログアウト結果を上書きしないようにしています。認可は引き続きサーバー側で行います。
+
+記事の入力値と保存状態は、記事ごとの `PostEditorProvider` 内の `useReducer` に集約しています。入力欄と保存ボタンは `usePostEditor()` で同じデータを読み、自動保存のタイマーと API 呼び出しは `useEditorController` が管理します。コンポーネント間の同期に CustomEvent や localStorage は使用しません。保存中の追加入力は変更として保持し、次の保存へ回します。
+
+通知一覧と未読件数は `useNotifications`、プロフィールの入力・画像プレビュー・保存状態は `useProfileEditor` でまとめて更新します。単独コンポーネントだけで使う表示切り替えなどはローカルな状態として保持しています。Vitest では、状態共有、自動保存の重複防止と追加入力、ログアウト中の遅延応答、通知更新失敗、画像プレビューの解放、コピー成功・失敗の Toast 表示を検証します。

@@ -2,14 +2,7 @@ import Link from 'next/link';
 import { FiArrowUpRight, FiMessageCircle, FiHeart } from 'react-icons/fi';
 import UserAvatar from '@/comp/UserAvatar';
 
-export type ActivityArticle = {
-  postId: string;
-  title: string;
-  excerpt: string | null;
-  occurredAt: Date;
-  note?: string;
-  author: { name: string; photoUrl: string | null };
-};
+import type { ActivityArticle } from '@/lib/contracts/pages';
 
 type Props = {
   title: string;
@@ -44,7 +37,7 @@ const ActivityArticleList = ({ title, description, type, articles }: Props) => {
                   <h3 className="truncate text-sm font-bold text-[#4C5159] group-hover:text-[#A66334]">{article.title}</h3>
                   <p className="mt-0.5 text-[11px] font-semibold text-[#80766E]">{article.author.name}</p>
                   <p className="mt-1 line-clamp-1 text-xs text-[#887B70]">{article.note ?? article.excerpt ?? '概要はありません'}</p>
-                  <time className="mt-2 block text-[11px] text-[#A0958C]">{article.occurredAt.toLocaleDateString('ja-JP')}</time>
+                  <time className="mt-2 block text-[11px] text-[#A0958C]">{new Date(article.occurredAt).toLocaleDateString('ja-JP')}</time>
                   </div>
                 </div>
                 <FiArrowUpRight aria-hidden="true" className="mt-1 shrink-0 text-[#A66334]" />

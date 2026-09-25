@@ -14,7 +14,7 @@ type AdminUserListItem = {
   status: 'PENDING' | 'ACTIVE' | 'SUSPENDED';
   photoUrl: string | null;
   department: { name: string } | null;
-  createdAt: Date;
+  createdAt: string;
 };
 
 type AdminUserTableProps = {
@@ -114,7 +114,7 @@ const AdminUserTable = ({ users, currentAdminId, keyword, selectedRole, selected
                   <td className="px-4 py-4">
                     {isCurrentUser ? <span className="text-sm text-[#AAA099]">—</span> : <AdminSessionRevokeButton userId={user.id} userName={user.name} />}
                   </td>
-                  <td className="px-4 py-4 text-sm text-[#817970]">{dateFormatter.format(user.createdAt)}</td>
+                  <td className="px-4 py-4 text-sm text-[#817970]">{dateFormatter.format(new Date(user.createdAt))}</td>
                 </tr>
               );
             })}

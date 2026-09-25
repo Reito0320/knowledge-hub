@@ -19,9 +19,9 @@ import {
 
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
-import type { HomeMember, HomePost } from '@/lib/home/get-home-data';
+import type { HomeMember, HomePost } from '@/lib/contracts/pages';
 import { getTagColorClass } from '@/lib/tag/get-tag-color-class';
-import { fetchTogglePostLike } from '@/app/api/post/[postId]/fetch';
+import { fetchTogglePostLike } from '@/lib/api/post/[postId]/fetch';
 
 type SecondSectionProps = {
   popularArticles: HomePost[];

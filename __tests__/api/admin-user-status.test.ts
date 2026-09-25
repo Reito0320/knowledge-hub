@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -8,15 +7,15 @@ const mocks = vi.hoisted(() => ({
   adminSetUserEnabled: vi.fn(),
 }));
 
-vi.mock('@/lib/AWS/admin-set-user-enabled', () => ({
+vi.mock('@/server/src/infrastructure/aws/admin-set-user-enabled', () => ({
   adminSetUserEnabled: mocks.adminSetUserEnabled,
 }));
 
-vi.mock('@/lib/auth/get-current-admin', () => ({
+vi.mock('@/server/src/auth/request-user', () => ({
   getCurrentAdmin: mocks.getCurrentAdmin,
 }));
 
-vi.mock('@/lib/prisma', () => ({
+vi.mock('@/server/src/infrastructure/prisma', () => ({
   prisma: {
     user: {
       findUnique: mocks.findUniqueUser,
@@ -25,10 +24,11 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-import { PATCH } from '@/app/api/admin/users/[userId]/status/route';
+import { AdminUsersUseridStatusController } from '@/server/src/controllers/admin/users/[userId]/status/controller';
+const { PATCH } = new AdminUsersUseridStatusController();
 
 const createRequest = (status: string) =>
-  new NextRequest('http://localhost/api/admin/users/user-2/status', {
+  new Request('http://localhost/api/admin/users/user-2/status', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),

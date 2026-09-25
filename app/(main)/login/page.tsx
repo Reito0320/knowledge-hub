@@ -3,10 +3,10 @@
 import { authHref, returnPathFromSearch } from '@/lib/auth/return-path';
 import { useReturnPath } from '@/lib/auth/use-return-path';
 
-import { fetchPostCreateSession } from '@/app/api/auth/session/fetch';
-import { fetchPostCreateUser } from '@/app/api/users/provision/fetch';
+import { fetchPostCreateSession } from '@/lib/api/auth/session/fetch';
+import { fetchPostCreateUser } from '@/lib/api/users/provision/fetch';
 import { setLoginRemembered } from '@/lib/auth/remember-me';
-import { notifyAuthSessionChanged } from '@/lib/auth/auth-session-event';
+import { useSession } from '@/lib/auth/session-context';
 import { fetchAuthSession, signIn } from 'aws-amplify/auth';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -19,6 +19,7 @@ type LoginResult = 'SIGNED_IN' | 'MFA_SETUP' | 'MFA_CODE';
 
 const LoginPage = () => {
   const nextPath = useReturnPath();
+  const { refreshSession } = useSession();
   const [loginStep, setLoginStep] = useState<LoginStep>('LOGIN');
   const [setupUri, setSetupUri] = useState('');
   const [sharedSecret, setSharedSecret] = useState('');
@@ -53,7 +54,7 @@ const LoginPage = () => {
 
     await fetchPostCreateSession('Bearer ' + accessToken);
 
-    notifyAuthSessionChanged();
+    await refreshSession();
 
     // Cookie設定後の完全なページ読込で、ProxyとServer Componentにも
     // 新しい認証状態を確実に反映する。

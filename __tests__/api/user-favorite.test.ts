@@ -8,11 +8,11 @@ const mocks = vi.hoisted(() => ({
   deleteFavorite: vi.fn(),
 }));
 
-vi.mock('@/lib/auth/get-current-user', () => ({
+vi.mock('@/server/src/auth/request-user', () => ({
   getCurrentUser: mocks.getCurrentUser,
 }));
 
-vi.mock('@/lib/prisma', () => ({
+vi.mock('@/server/src/infrastructure/prisma', () => ({
   prisma: {
     user: { findFirst: mocks.findFirstUser },
     userFavorite: {
@@ -23,7 +23,8 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-import { POST } from '@/app/api/users/[userId]/favorite/route';
+import { UsersUseridFavoriteController } from '@/server/src/controllers/users/[userId]/favorite/controller';
+const { POST } = new UsersUseridFavoriteController();
 
 const context = (userId = 'target-1') => ({
   params: Promise.resolve({ userId }),

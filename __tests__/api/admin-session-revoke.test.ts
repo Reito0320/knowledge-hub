@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
   getCurrentAdmin: vi.fn(),
@@ -8,12 +7,13 @@ const mocks = vi.hoisted(() => ({
   writeAudit: vi.fn(),
 }));
 
-vi.mock('@/lib/auth/get-current-admin', () => ({ getCurrentAdmin: mocks.getCurrentAdmin }));
-vi.mock('@/lib/AWS/admin-user-global-sign-out', () => ({ adminUserGlobalSignOut: mocks.globalSignOut }));
-vi.mock('@/lib/admin/write-admin-audit-log', () => ({ writeAdminAuditLog: mocks.writeAudit }));
-vi.mock('@/lib/prisma', () => ({ prisma: { user: { findUnique: mocks.findUniqueUser } } }));
+vi.mock('@/server/src/auth/request-user', () => ({ getCurrentAdmin: mocks.getCurrentAdmin }));
+vi.mock('@/server/src/infrastructure/aws/admin-user-global-sign-out', () => ({ adminUserGlobalSignOut: mocks.globalSignOut }));
+vi.mock('@/server/src/infrastructure/write-admin-audit-log', () => ({ writeAdminAuditLog: mocks.writeAudit }));
+vi.mock('@/server/src/infrastructure/prisma', () => ({ prisma: { user: { findUnique: mocks.findUniqueUser } } }));
 
-import { POST } from '@/app/api/admin/users/[userId]/session/route';
+import { AdminUsersUseridSessionController } from '@/server/src/controllers/admin/users/[userId]/session/controller';
+const { POST } = new AdminUsersUseridSessionController();
 
 describe('POST /api/admin/users/[userId]/session', () => {
   beforeEach(() => {
@@ -23,7 +23,7 @@ describe('POST /api/admin/users/[userId]/session', () => {
   });
 
   it('対象ユーザーのCognito全セッションを失効して監査記録を残す', async () => {
-    const request = new Request('http://localhost', { method: 'POST', body: JSON.stringify({ reason: '端末紛失' }) }) as NextRequest;
+    const request = new Request('http://localhost', { method: 'POST', body: JSON.stringify({ reason: '端末紛失' }) }) as Request;
     const response = await POST(request, { params: Promise.resolve({ userId: 'user-1' }) });
     expect(response.status).toBe(200);
     expect(mocks.globalSignOut).toHaveBeenCalledWith('user-1');
@@ -31,7 +31,7 @@ describe('POST /api/admin/users/[userId]/session', () => {
   });
 
   it('自分自身は失効できない', async () => {
-    const request = new Request('http://localhost', { method: 'POST', body: '{}' }) as NextRequest;
+    const request = new Request('http://localhost', { method: 'POST', body: '{}' }) as Request;
     const response = await POST(request, { params: Promise.resolve({ userId: 'admin-1' }) });
     expect(response.status).toBe(400);
     expect(mocks.globalSignOut).not.toHaveBeenCalled();

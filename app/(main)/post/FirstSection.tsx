@@ -1,15 +1,8 @@
 'use client';
 
-import {
-  fetchPostCreate,
-  type PostData,
-} from '@/app/api/post/fetch';
-import { fetchUpdatePost } from '@/app/api/post/[postId]/fetch';
+import { usePostEditor } from '@/lib/post/editor/post-editor-context';
 import { motion } from 'motion/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { validatePostForPublish } from '@/lib/post/validate-post-for-publish';
-import { toast } from 'react-toastify';
 import {
   FiAlertCircle,
   FiArrowLeft,
@@ -19,161 +12,10 @@ import {
   FiSave,
   FiSend,
 } from 'react-icons/fi';
-import { useEffect, useRef, useState } from 'react';
+type FirstSectionProps = { mode: 'create' | 'edit' };
 
-type FirstSectionProps = {
-  mode: 'create' | 'edit';
-  postId?: string;
-  storageKey: string;
-};
-
-type DraftChangeDetail = {
-  storageKey: string;
-  data: PostData;
-};
-
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
-
-const FirstSection = ({ mode, postId, storageKey }: FirstSectionProps) => {
-  const router = useRouter();
-  const [isSaving, setIsSaving] = useState(false);
-  const [notice, setNotice] = useState<string>('');
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const currentPostIdRef = useRef(postId);
-  const isSavingRef = useRef(false);
-  const autoSaveTimerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    currentPostIdRef.current = postId;
-  }, [postId]);
-
-  useEffect(() => {
-    const handleDraftChange = (event: Event) => {
-      const { detail } = event as CustomEvent<DraftChangeDetail>;
-      if (detail.storageKey !== storageKey) return;
-
-      if (autoSaveTimerRef.current) {
-        window.clearTimeout(autoSaveTimerRef.current);
-      }
-
-      const hasInput = Boolean(
-        detail.data.title?.trim() ||
-          detail.data.excerpt?.trim() ||
-          detail.data.content?.trim() ||
-          detail.data.tags.length,
-      );
-      if (!hasInput) return;
-
-      // 最後の入力から1.5秒待ち、連続入力中のAPIリクエストをまとめる。
-      autoSaveTimerRef.current = window.setTimeout(async () => {
-        if (isSavingRef.current) return;
-
-        try {
-          isSavingRef.current = true;
-          setSaveStatus('saving');
-          setNotice('');
-
-          const targetPostId = currentPostIdRef.current;
-          if (targetPostId) {
-            await fetchUpdatePost(targetPostId, detail.data, {
-              publish: false,
-            });
-          } else {
-            const response = await fetchPostCreate(detail.data, {
-              publish: false,
-            });
-            currentPostIdRef.current = response.postId;
-
-            // 新規記事を一度だけ作成し、以降の自動保存はPATCHへ切り替える。
-            // router.replaceでは編集ページが再マウントされSkeletonが出るため、
-            // 現在の画面を維持したままURLだけを編集URLへ置き換える。
-            localStorage.removeItem(storageKey);
-            window.history.replaceState(
-              null,
-              '',
-              `/post/${response.postId}/edit`,
-            );
-          }
-
-          setSaveStatus('saved');
-        } catch (error) {
-          console.error('記事の自動保存に失敗しました:', error);
-          setSaveStatus('error');
-          setNotice('保存できませんでした。下書き保存をお試しください。');
-        } finally {
-          isSavingRef.current = false;
-        }
-      }, 1500);
-    };
-
-    window.addEventListener('post-editor:draft-change', handleDraftChange);
-    return () => {
-      window.removeEventListener('post-editor:draft-change', handleDraftChange);
-      if (autoSaveTimerRef.current) {
-        window.clearTimeout(autoSaveTimerRef.current);
-      }
-    };
-  }, [router, storageKey]);
-
-  const savePost = async (publish: boolean) => {
-    if (isSavingRef.current) return;
-
-    try {
-      if (autoSaveTimerRef.current) {
-        window.clearTimeout(autoSaveTimerRef.current);
-      }
-      isSavingRef.current = true;
-      setIsSaving(true);
-      setSaveStatus('saving');
-      setNotice('');
-      const localData = localStorage.getItem(storageKey);
-      const cashData = localData ? JSON.parse(localData) : null;
-      if (!cashData) throw new Error('記事の入力値を取得できませんでした。');
-
-      if (publish) {
-        const invalidItems = validatePostForPublish(cashData).filter(
-          (item) => !item.valid,
-        );
-        if (invalidItems.length > 0) {
-          setNotice(invalidItems.map((item) => item.message).join(' '));
-          setSaveStatus('error');
-          document
-            .getElementById('publish-check')
-            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          return;
-        }
-      }
-
-      let response: { message: string; postId: string };
-
-      const targetPostId = currentPostIdRef.current;
-      if (targetPostId) {
-        response = await fetchUpdatePost(targetPostId, cashData, { publish });
-      } else {
-        response = await fetchPostCreate(cashData, { publish });
-        currentPostIdRef.current = response.postId;
-      }
-
-      localStorage.removeItem(storageKey);
-      setNotice(response.message);
-      setSaveStatus('saved');
-      toast.success(response.message);
-      router.push('/post/' + response.postId);
-      router.refresh();
-    } catch (error) {
-      console.error(error);
-      setNotice(
-        error instanceof Error ? error.message : '記事を保存できませんでした。',
-      );
-      setSaveStatus('error');
-      toast.error(
-        error instanceof Error ? error.message : '記事を保存できませんでした。',
-      );
-    } finally {
-      isSavingRef.current = false;
-      setIsSaving(false);
-    }
-  };
+const FirstSection = ({ mode }: FirstSectionProps) => {
+  const { isSaving, notice, saveStatus, savePost } = usePostEditor();
   return (
     <motion.header
       initial={{ opacity: 0, y: 10 }}

@@ -1,13 +1,14 @@
 import FirstSection from './_comp/FirstSection';
 import SecondSection from './_comp/SecondSection';
 import ThirdSection from './_comp/ThirdSection';
-import { getHomeData } from '@/lib/home/get-home-data';
+import { fetchServerApi } from '@/lib/api/server';
+import type { HomeData } from '@/lib/contracts/pages';
 import { connection } from 'next/server';
 
 export default async function Home() {
   // Build時ではなくRequest時に最新のDBデータを取得する。
   await connection();
-  const homeData = await getHomeData();
+  const homeData = await fetchServerApi<HomeData>('/home');
 
   return (
     <main className="min-h-screen min-w-0 overflow-x-clip bg-[#F7F6F3] text-[#1E2A3A]">
